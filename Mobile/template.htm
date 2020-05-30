@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/gray/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript" src="/Mobile/JS/LookUpMobile.js"></script>
+    <script src="/Mobile/JS/PageMobile.js" type="text/javascript"></script>
+    <script src="/Base/JS/approval.js" type="text/javascript"></script>
+    <style type="text/css">
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 18px;*/ /*border-radius: 5px;*/
+        }
+    </style>
+</head>
+<body>
+    <div id="divContent" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" style="width:50px" onclick="pageMobile.backToList()">列表</a>                    
+                    <!--<a id="ptitle" href="javascript:void(0)" class="easyui-linkbutton" plain="true" style=" font-weight:bold;"></a>-->
+                </div>
+                <div class="m-right" id="toolbar">
+                    <a id="btnDelete" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-remove',plain:true" onclick="pageMobile.removef()">删除</a>
+                    <a id="btnDetail" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-document',plain:true" onclick="pageMobile.showDetail()">明细</a>
+                    <a id="btnSubmit" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-submit',plain:true" onclick="pageMobile.submit()">提交</a>
+                    <a id="btnSaveAndContine" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true" onclick="pageMobile.save(1)">保存并继续</a>
+                    <a id="btnSave" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true" onclick="pageMobile.save(0)">保存</a>
+                </div>
+            </div>
+        </header>
+        <!--以下是页面字段内容，
+        form1是主表，form2是子表，这是固定的，如果没有子表，就不要form2，
+        一个字段一行，左边是标题，右边是输入框，一个li表示一行-->
+        <form id="form1" method="post">
+        <ul class="m-list">
+            <li>
+                <!--字段标题的位置-->
+                订单号
+                <div class="m-right">
+                    <!--字段输入框的位置，只要用input text控件，必须要有id、name，name是字段;
+                    fieldType表示类型，默认为字符，有字符、整数、数据、日期、时间、逻辑、备注;
+                    decimalNum 表示小数位数，只有fieldtype为数据时有效;
+                    isReadonly="true"表示只读；
+                    defaultVal默认值，可以在后台定义；
+                    isRequied="true"表示必填，可以在后台定义;
+                    -->
+                    <input id="Text1" name="sOrderNo" fieldtype="字符" isreadonly="true" type="text" />
+                </div>
+            </li>
+            <li>下单日期
+                <div class="m-right">
+                    <input id="Text2" name="dDate" fieldtype="日期" type="text" />
+                </div>
+            </li>
+            <li>客户
+                <div class="m-right">
+                    <input id="Text3" name="iBscDataCustomerRecNo" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>业务员
+                <div class="m-right">
+                    <input id="Text4" name="sSaleID" type="text" />
+                </div>
+            </li>
+            <li>部门
+                <div class="m-right">
+                    <input id="Text5" name="sDeptID" type="text" />
+                </div>
+            </li>
+            <li>订单交期
+                <div class="m-right">
+                    <input id="Text9" name="dOrderDate" fieldtype="日期" type="text" />
+                </div>
+            </li>
+            <li>备注
+                <div class="m-right">
+                    <input id="Text6" name="sRemark" fieldtype="备注" type="text" />
+                </div>
+            </li>
+            <li>制单人
+                <div class="m-right">
+                    <input id="Text7" name="sUserID" isreadonly="true" type="text" />
+                </div>
+            </li>
+            <li>制单时间
+                <div class="m-right">
+                    <input id="Text8" name="dInputDate" isreadonly="true" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+        <form id="form2" method="post">
+        <ul class="m-list">
+            <li>
+                <!--字段标题的位置-->
+                序号
+                <div class="m-right">
+                    <!--字段输入框的位置，只要用input text控件，必须要有id、name，name是字段;
+                    fieldType表示类型，默认为字符，有字符、整数、数据、日期、时间、逻辑、备注;
+                    decimalNum表示小数位数，只有fieldtype为数据时有效;
+                    isReadonly="true"表示只读；
+                    defaultVal默认值，可以在后台定义；
+                    isRequied="true"表示必填，可以在后台定义;
+                    -->
+                    <input id="Text11" name="iSerial" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>存货编码
+                <div class="m-right">
+                    <input id="Text12" name="iBscDataMatRecNo" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>存货名称
+                <div class="m-right">
+                    <input id="Text13" name="sName" disabled="disabled" type="text" />
+                </div>
+            </li>
+            <li>数量
+                <div class="m-right">
+                    <input id="Text14" name="fQty" fieldtype="数据" decimalnum="2" type="text" />
+                </div>
+            </li>
+            <li>单价
+                <div class="m-right">
+                    <input id="Text15" name="fPrice" fieldtype="数据" decimalnum="2" type="text" />
+                </div>
+            </li>
+            <li>金额
+                <div class="m-right">
+                    <input id="Text16" name="fTotal" fieldtype="数据" decimalnum="2" type="text" />
+                </div>
+            </li>
+            <li>备注
+                <div class="m-right">
+                    <input id="Text18" name="sRemark" fieldtype="备注" type="text" />
+                </div>
+            </li>
+            <li>制单人
+                <div class="m-right">
+                    <input id="Text19" name="sUserID" isreadonly="true" type="text" />
+                </div>
+            </li>
+            <li>制单时间
+                <div class="m-right">
+                    <input id="Text20" name="dInputDate" isreadonly="true" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+    </div>
+    <div id="divLookUpList" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="lookUpMobile.reset();$.mobile.back();">退回</a>
+                </div>
+                <div id="divLookUpTitle" class="m-title"></div>
+                <div class="m-right">
+                    <a id="btnLookUpSearch" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-search',plain:true" onclick="lookUpMobile.showCondition()">查询</a>
+                </div>
+            </div>
+        </header>
+        <div id="divLookUpResultList">
+        </div>
+    </div>
+    <div id="divLookUpSearch" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back();">退回</a>
+                </div>
+                <div id="div2" class="m-title">查询条件</div>
+                <div class="m-right">
+                    <a id="btnLookUpSearchClear" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true" onclick="lookUpMobile.conditionClear()">清空</a>
+                    <a id="btnLookUpSearchFinish" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true" onclick="lookUpMobile.search()">完成</a>
+                </div>
+            </div>
+        </header>
+        <form id="formLookUpCondition">
+        <ul id="ulLookUpSearch" class="m-list">
+        </ul>
+        </form>
+    </div>
+</body>
+</html>

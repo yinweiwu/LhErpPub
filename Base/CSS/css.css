@@ -1,0 +1,9 @@
+﻿.inputopenpage
+{
+    background:url(JS/lib/ligerUI/skins/icons/select.jpg);
+    background-repeat: no-repeat; 
+    background-position: right;
+    border:none;
+    border-bottom:solid 1px #d0d0d0;
+    height:22px;
+}

@@ -1,0 +1,198 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <style type="text/css">
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 18px;*/ /*border-radius: 5px;*/
+        }
+    </style>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        $(function () {
+            //获取用户名
+            $.ajax(
+                {
+                    url: "/ashx/LoginHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "getcurtuserid" },
+                    success: function (resText) {
+                        userid = resText;
+                    },
+                    error: function (resText) {
+
+                    }
+                }
+            )
+            $("#Text9").combobox(
+                {
+                    valueField: "iRecNo",
+                    textField: "sStockName",
+                    editable: false,
+                    width: 155
+                }
+            )
+            var sqlObjStock = {
+                TableName: "bscDataStockM",
+                Fields: "iRecNo,sStockName",
+                SelectAll: "True",
+                Filters: [
+                        {
+                            Field: "isnull(iShop,0)",
+                            ComOprt: "=",
+                            Value: "1",
+                            LinkOprt: "and"
+                        }
+                        ,
+                        {
+                            Field: "iRecNo",
+                            ComOprt: "in",
+                            Value: "(select iMainRecNo from bscDataStockDUser where sCode='" + userid + "')"
+                        }
+                    ]
+            };
+            var resultStock = SqlGetData(sqlObjStock);
+            if (resultStock.length > 0) {
+                $("#Text9").combobox("loadData", resultStock);
+            }
+            if (getQueryString("usetype") == "add") {
+                $("#divStock").window("open");
+            }
+        })
+        function scanBarcode() {
+            var sBarcode = $("#Text1").textbox("getValue");
+            var allRows = $("#divList").datalist("getRows");
+            for (var i = 0; i < allRows.length; i++) {
+                if (allRows[i].sbarCode == sBarcode) {
+                    showMessage("条码已存在", "条码已存在！");
+                    return false;
+                }
+            }
+
+            var iRed = $("#Text11").switchbutton("options").checked == true ? 1 : 0;
+            var iBscDataStockMRecNo = $("#Text9").combobox("getValue");
+            var jsonobj = {
+                StoreProName: "SpGetStyleBarcode",
+                StoreParms: [{
+                    ParmName: "@sBarcode",
+                    Value: sBarcode
+                }
+                ,
+                {
+                    ParmName: "@iRed",
+                    Value: iRed
+                }
+                ,
+                {
+                    ParmName: "@iBscDataStockMRecNo",
+                    Value: iBscDataStockMRecNo
+                }
+                ]
+            }
+            var result = SqlStoreProce(jsonobj, true);
+            if (result.Rows.length > 0) {
+                var rowData = result.Rows[0];
+                rowData.fDisCount = 100;
+                $("#form1").form("load", rowData);
+                var fprice = $("#Text5").numberbox("getValue");
+                if (fprice != "") {
+                    if (iRed == 1) {
+                        fprice = Number(fprice) * -1;
+                    }
+                    $("#Text5").numberbox("readonly");
+                    var fdis = $("#Text6").numberbox("getValue");
+                    if (fdis != "") {
+                        var fdisPrice = Number(fprice) * Number(fdis) / 100;
+                        $("#Text7").numberbox("setValue", fdisPrice);
+                    }
+                }
+            }
+            else {
+                showMessage("条码不存在", "条码不存在！");
+            }
+            $("#Text1").textbox("setValue", "");
+        }
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        function showMessage(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                timeout: 1000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+        $.fn.serializeObject = function () {
+            var o = {};
+            var a = this.serializeArray();
+            $.each(a, function () {
+                if (o[this.name]) {
+                    if (!o[this.name].push) {
+                        o[this.name] = [o[this.name]];
+                    }
+                    o[this.name].push(this.value || '');
+                } else {
+                    o[this.name] = this.value || '';
+                }
+            });
+            return o;
+        };
+        //获取今天日期：格式2015-01-01
+        function getNowDate() {
+            var nowdate = new Date();
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+        //获取当前时时
+        function getNowTime() {
+            var nowdate = new Date();
+            var hour = nowdate.getHours();      //获取当前小时数(0-23)
+            var minute = nowdate.getMinutes();     //获取当前分钟数(0-59)
+            var second = nowdate.getSeconds();
+            return hour + ":" + minute + ":" + second;
+        }
+    </script>
+</head>
+<body>
+
+</body>
+</html>

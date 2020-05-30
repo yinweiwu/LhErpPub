@@ -1,0 +1,551 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>列表数据</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript" src="JS/LookUpMobile.js"></script>
+    <script language="javascript" type="text/javascript">
+        //是否明细
+        var isDetail = "0";
+        //主键
+        var fieldKey = "";
+        //子表表名
+        var childTableName = "";
+        //主子表关联字段
+        var linkField = "";
+        //子表主键
+        var childFieldKey = "";
+        //主表主键值 只在isDetail=1时有有效
+        var mainkey = "";
+        //过滤条件，一般是查询后的条件
+        var filters = "1=1";
+        //打开时的过滤条件
+        var openFilters = "";
+        //标题
+        var title = "";
+        //总行数
+        var total = 0;
+        //当前行数
+        var rowCount = 0;
+        //列表显示样式
+        var rowStyle = "";
+        //编辑页面地址
+        var pageUrl = "";
+        //表名
+        var tableName = "";
+        //是否有浏览权限，没有则不可点击
+        var canView = false;
+        //是否触发了查询
+        var isSerachTrag = false;
+        //当前用户号
+        var userid = "";
+        //所有查询条件
+        var queryConditions = undefined;
+        //是否有子表
+        var hasChild = "0";
+        $(function () {
+            isDetail = getQueryString("isDetail");
+            //如果是从手机app来访问的话，是主表的情况下，回退按钮禁用
+            if (isDetail != "1") {
+                if (localStorage.from == undefined || localStorage.from == null || localStorage.from == "") {
+                    if (getQueryString("from") == "app") {
+                        localStorage.from = "app";
+                    }
+                }
+                if (localStorage.from == "app") {
+                    $("#btnback").linkbutton("disable");
+                }
+            }
+            if (isDetail == "1") {
+                mainkey = getQueryString("mainKey");
+            }
+            //获取用户名
+            $.ajax(
+                {
+                    url: "/ashx/LoginHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "getcurtuserid" },
+                    success: function (resText) {
+                        userid = resText;
+                        //alert(resText);
+                    },
+                    error: function (resText) {
+                        //alert(resText);
+                    }
+                }
+            )
+
+            //获取表单主键，子表表名、主键、关联字段、打开时条件、明细url
+            $.ajax(
+                {
+                    url: "Handler/MobileHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "GetFormInfo", iFormID: getQueryString("iFormID") },
+                    success: function (resText) {
+                        var resObj = JSON2.parse(resText);
+                        if (resObj.success == true) {
+                            var infoObj = JSON2.parse(resObj.message);
+                            title = infoObj.title;
+                            fieldKey = infoObj.FieldKey;
+                            childTableName = infoObj.sDetailTableName;
+                            linkField = infoObj.sLinkField;
+                            childFieldKey = infoObj.sDeitailFieldKey;
+                            pageUrl = infoObj.PageUrl;
+                            openFilters = infoObj.sOpenFilters == "" ? "1=1" : infoObj.sOpenFilters;
+                            tableName = infoObj.tableName;
+
+                            title = isDetail == "1" ? title + "-明细" : title;
+                            $("#ptitle").linkbutton({ text: title });
+
+                        }
+                        else {
+                            showMessage("获取表单信息错误", resObj.message);
+                        }
+                    },
+                    error: function (resText) {
+                        showMessage("获取表单信息错误", resText.responseText);
+                    }
+                }
+            )
+            if (childFieldKey != "" && childTableName != "" && linkField != "") {
+                hasChild = "1";
+            }
+
+            //获取列表显示样式
+            $.ajax(
+                {
+                    url: "Handler/MobileHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "GetFormDataStyle", iFormID: getQueryString("iFormID"), isDetail: getQueryString("isDetail") },
+                    success: function (resText) {
+                        var resObj = JSON2.parse(resText);
+                        if (resObj.success == true) {
+                            rowStyle = resObj.message;
+                        }
+                        else {
+                            showMessage("获取列样式时错误", resObj.message);
+                        }
+                    },
+                    error: function (resText) {
+                        showMessage("获取列样式时错误", resText.responseText);
+                    }
+                }
+            );
+            //获取权限按钮
+            if (isDetail != "1") {
+                $.ajax(
+                {
+                    url: "Handler/MobileHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "GetFormButton", iMenuID: getQueryString("iMenuID") },
+                    success: function (resText) {
+                        var resObj = JSON2.parse(resText);
+                        if (resObj.success == true) {
+                            var BtnData = resObj.tables[0];
+                            //隐藏按钮
+                            var hasAdd = false;
+                            var hasSearch = false;
+                            //var hasSubmit = false;
+                            for (var i = 0; i < BtnData.length; i++) {
+                                if (BtnData[i].sRightName == "fadd") {
+                                    hasAdd = true;
+                                }
+                                if (BtnData[i].sRightName == "fquery") {
+                                    hasSearch = true;
+                                }
+                                /*if (BtnData[i].sRightName == "submit") {
+                                hasSubmit = true;
+                                }*/
+                                if (BtnData[i].sRightName == "fview") {
+                                    canView = true;
+                                }
+                            }
+                            if (hasAdd == false) {
+                                $("#btnAdd").hide();
+                            }
+                            if (hasSearch == false) {
+                                $("#btnSearch").hide();
+                            }
+                            /*if (hasSubmit == false) {
+                            $("#btnSubmit").hide();
+                            }*/
+                        }
+                        else {
+                            showMessage("获取按钮时错误", resObj.message);
+                        }
+                    },
+                    error: function (resText) {
+                        showMessage("获取按钮时错误", resText.responseText);
+                    }
+                }
+            );
+            }
+            else {
+                $("#btnSearch").hide();
+                $("#btnDetail").hide();
+                $("#btnSubmit").hide();
+            }
+
+            //获取查询条件
+            $.ajax(
+                {
+                    url: "Handler/MobileHandler.ashx",
+                    async: true,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "GetFormQuery", iFormID: getQueryString("iFormID") },
+                    success: function (resText) {
+                        var resObj = JSON2.parse(resText);
+                        if (resObj.success == true) {
+                            var data = resObj.tables[0];
+                            queryConditions = data;
+                            var person = resObj.tables[1];
+                            var GetInput = function (type, id, value, required, fieldid) {
+                                var html = "";
+                                switch (type) {
+                                    case "S":
+                                        {
+                                            html = "<input id=\"" + id + "\" name=\"" + fieldid + "\" type=\"text\" class=\"easyui-textbox\" data-options=\"value:'" + value + "',required:" + required + ",width:120\" />";
+                                        } break;
+                                    case "F":
+                                        {
+                                            html = "<input id=\"" + id + "\" name=\"" + fieldid + "\" type=\"text\" class=\"easyui-numberbox\" data-options=\"value:" + value + ",required:" + required + ",width:120\" />";
+                                        } break;
+                                    case "D":
+                                        {
+                                            html = "<input id=\"" + id + "\" name=\"" + fieldid + "\" type=\"text\" class=\"easyui-datebox\" data-options=\"value:'" + value + "',required:" + required + ",width:120\" />";
+                                        } break;
+                                    case "DT":
+                                        {
+                                            html = "<input id=\"" + id + "\" name=\"" + fieldid + "\" type=\"text\" class=\"easyui-datetimebox\" data-options=\"value:'" + value + "',required:" + required + ",width:120\" />";
+                                        } break;
+                                    case "B":
+                                        {
+                                            html = "<input id=\"" + id + "\" name=\"" + fieldid + "\" type=\"text\" class=\"easyui-switchbutton\" />";
+                                        } break;
+                                }
+                                return html;
+                            }
+                            var GetLookUpInput = function (id, fieldid, lookupName, lookupFilters) {
+                                var html = "<input type=\"text\" id=\"" + id + "\" name=\"" + fieldid + "\" lookUpOptions=\"[{uniqueid:&quot;&quot;,lookUpName:&quot;" + lookupName + "&quot;,lookUpFilters:&quot;" + lookupFilters + "&quot;}]\" />";
+                                return html;
+                            }
+
+                            var html = "";
+                            for (var i = 0; i < data.length; i++) {
+                                var theRow = data[i];
+                                html += "<li>";
+                                var valueO = data[i].sValue;
+                                var value = valueO;
+                                switch (value) {
+                                    case "UserID": value = person[0].sCode; break;
+                                    case "UserName": value = person[0].sName; break;
+                                    case "CurrentDate": value = getNowDate(); break;
+                                    case "CurrentDateTime": value = getNowDate() + " " + getNowTime(); break;
+                                    case "Departid": value = person[0].sClassID; break;
+                                    case "NewGUID": value = NewGuid(); break;
+                                }
+                                var required = data[i].iRequired == "1" ? true : false;
+                                if (data[i].sLookUpName == undefined || data[i].sLookUpName == null || data[i].sLookUpName == "") {
+                                    html += data[i].sCaption + "<div class=\"m-right\">";
+                                    html += GetInput(data[i].sFieldType, data[i].sFieldName + "_" + data[i].iSerial, value, required, data[i].sFieldName);
+                                    html += "</div>";
+                                }
+                                else {
+                                    html += data[i].sCaption + "<div class=\"m-right\">";
+                                    html += GetLookUpInput(data[i].sFieldName + "_" + data[i].iSerial, data[i].sFieldName, data[i].sLookUpName, data[i].sLookUpFilters);
+                                    html += "</div>";
+                                }
+                                html += "</li>";
+                            }
+                            var apphtml = $(html);
+                            $("#ulSearchList").append(apphtml);
+                            $.parser.parse("#ulSearchList");
+
+                            lookUpMobile.init();
+                        }
+                        else {
+                            showMessage("获取查询条件时出错", resObj.message);
+                        }
+                    },
+                    error: function (resText) {
+                        showMessage("获取查询条件时出错", resText.responseText);
+                    }
+                }
+            )
+
+            $("#dl").datalist(
+                {
+                    fit: true,
+                    lines: true,
+                    border: false,
+                    valueField: fieldKey,
+                    textFormatter: function (value, row, index) {
+                        if (row[fieldKey]) {
+                            //var rowstr=JSON2.stringify(row);
+                            var f = new Function("row", "return \"" + rowStyle + "\";");
+                            var html = "<div class=\'datalist-link\' style='vertical-align:middle;' >" + f(row) + "</div>";
+                            //var html = "<div class=\'datalist-link\' style='vertical-align:middle;' >" + rowStyle + "</div>";
+                            return html;
+                        }
+                        else {
+                            return "点击加载更多...";
+                        }
+                    },
+                    onClickRow: function (index, row) {
+                        var key = row[fieldKey];
+                        if (key) {
+                            if (canView == true) {
+                                if (row.iStatus) {
+                                    //如果已提交或审批，则不可修改是浏览状态
+                                    if (parseInt(row.iStatus) > 1) {
+                                        window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=view&isDetail=" + isDetail + "&tableName=" + (isDetail == "1" ? childTableName : tableName) + "&fieldKey=" + (isDetail == "1" ? childFieldKey : fieldKey) + "&key=" + row[((isDetail == "1" ? childFieldKey : fieldKey))] + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+                                    }
+                                    else {
+                                        window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=modify&isDetail=" + isDetail + "&tableName=" + (isDetail == "1" ? childTableName : tableName) + "&fieldKey=" + (isDetail == "1" ? childFieldKey : fieldKey) + "&key=" + row[((isDetail == "1" ? childFieldKey : fieldKey))] + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+                                    }
+                                }
+                                else {
+                                    window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=modify&isDetail=" + isDetail + "&tableName=" + (isDetail == "1" ? childTableName : tableName) + "&fieldKey=" + (isDetail == "1" ? childFieldKey : fieldKey) + "&key=" + row[((isDetail == "1" ? childFieldKey : fieldKey))] + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+                                }
+                            }
+                            else {
+                                if (isDetail == "1") {
+                                    window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=modify&isDetail=" + isDetail + "&tableName=" + (isDetail == "1" ? childTableName : tableName) + "&fieldKey=" + (isDetail == "1" ? childFieldKey : fieldKey) + "&key=" + row[((isDetail == "1" ? childFieldKey : fieldKey))] + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+                                }
+                                else {
+                                    showMessage("您没有权限浏览", "对不起，您没有权限浏览！");
+                                }
+                            }
+                        }
+                        else {
+                            getListData();
+                        }
+                    }
+                }
+            )
+            getListData();
+        })
+
+        //type=1表示是查询
+        function getListData(type) {
+            var filtersFull = isDetail == "1" ? (linkField.split("=")[1] + "='" + mainkey + "'") : (isSerachTrag == true ? filters : filters + " and " + openFilters);
+            var rows = $("#dl").datalist("getRows");
+            //如果total=rowCount则表示要么没有数据，要么全部数据加载完成。未加载全部数据时，在最后一行加一个【加载更多...】的行
+            var skipRow = total == rowCount ? 0 : rows.length - 1;
+            $.ajax(
+                {
+                    url: "Handler/MobileHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "GetFormData", iFormID: getQueryString("iFormID"), rows: skipRow, filters: filtersFull, isDetail: isDetail },
+                    success: function (resText) {
+                        var resObj = JSON2.parse(resText);
+                        if (resObj.success == true) {
+                            if (total > rowCount) {
+                                $("#dl").datalist("deleteRow", rows.length - 1);
+                            }
+                            total = resObj.tables[1][0].Column1;
+                            var data = resObj.tables[0];
+                            //                            for (var i = 0; i < data.length; i++) {
+                            //                                $("#dl").datalist("appendRow", data[i]);
+                            //                            }
+                            var dataAll = [];
+                            if (type == "1") {
+                                dataAll = data.concat([]);
+                            }
+                            else {
+                                dataAll = rows.concat(data);
+                            }
+                            $("#dl").datalist("loadData", dataAll);
+                            data = rows = null;
+                            rowCount = dataAll.length;
+                            if (rowCount < total) {
+                                //如果
+                                var btnRow = {};
+                                $("#dl").datalist("appendRow", btnRow);
+                            }
+                        }
+                        else {
+                            showMessage("获取表单信息错误", resObj.message);
+                        }
+                    },
+                    error: function (resText) {
+                        showMessage("获取表单信息错误", resText.responseText);
+                    }
+                }
+            )
+        }
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+
+        function showMessage(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+
+        //获取今天日期：格式2015-01-01
+        function getNowDate() {
+            var nowdate = new Date();
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+        //获取当前时时
+        function getNowTime() {
+            var nowdate = new Date();
+            var hour = nowdate.getHours();      //获取当前小时数(0-23)
+            var minute = nowdate.getMinutes();     //获取当前分钟数(0-59)
+            var second = nowdate.getSeconds();
+            return hour + ":" + minute + ":" + second;
+        }
+
+        function NewGuid_S4() {
+            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        }
+        function NewGuid() {
+            return (this.NewGuid_S4() + this.NewGuid_S4() + "-" + this.NewGuid_S4() + "-" + this.NewGuid_S4() + "-" + this.NewGuid_S4() + "-" + this.NewGuid_S4() + this.NewGuid_S4() + this.NewGuid_S4());
+        }
+        function searchClear() {
+            $("#form1").form("clear");
+            var inputLookup = $("input[hasLookUp]");
+            for (var i = 0; i < inputLookup.length; i++) {
+                var id = $(inputLookup[i]).attr("id");
+                var idOr = id.substr(0, id.indexOf("_Value"));
+                $("#" + idOr + "_Text").html("");
+            }
+        }
+        function doSearch() {
+            var formDataArr = $("#form1").serializeArray();
+            filters = "1=1";
+            var thefilter = "1=1";
+            for (var i = 0; i < queryConditions.length; i++) {
+                if (formDataArr[i].value != null && formDataArr[i].value != undefined && formDataArr[i].value != "") {
+                    var op = queryConditions[i].sOpTion;
+                    op = op == "" || op == null || op == undefined ? "like" : op;
+                    var value = op == "like" ? "'%" + formDataArr[i].value + "%'" : "'" + formDataArr[i].value + "'";
+                    thefilter += " and " + formDataArr[i].name + " " + op + " " + value;
+                }
+            }
+            isSerachTrag = true;
+            filters += " and " + thefilter;
+            getListData(1);
+            $.mobile.back();
+        }
+        function doAdd() {
+            if (pageUrl != "") {
+                window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=add&isDetail=" + isDetail + "&tableName=" + (isDetail == "1" ? childTableName : tableName) + "&fieldKey=" + (isDetail == "1" ? childFieldKey : fieldKey) + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+            }
+        }
+        function pageBack() {
+            if (getQueryString("isDetail") != "1") {
+                window.location.href = "workList.htm?random=" + Math.random();
+            }
+            else {
+                var key = getQueryString("mainKey");
+                window.location.href = pageUrl + "?iMenuID=" + getQueryString("iMenuID") + "&iFormID=" + getQueryString("iFormID") + "&usetype=modify&isDetail=0&tableName=" + tableName + "&fieldKey=" + fieldKey + "&key=" + key + "&mainTableName=" + tableName + "&mainFieldKey=" + fieldKey + "&mainKey=" + getQueryString("mainKey") + "&linkField=" + linkField.split("=")[1] + "&hasChild=" + hasChild + "&random=" + Math.random();
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="divList" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a id="btnback" href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" style="width:50px" onclick="pageBack()">回退</a>                    
+                </div>
+                <div class="m-title">
+                    <a id="ptitle" href="javascript:void(0)" class="easyui-linkbutton" plain="true" style=" font-weight:bold;"></a>
+                </div>
+                <div class="m-right">
+                    <a id="btnSearch" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-search',plain:true" onclick="$.mobile.go('#divSearchList','slide','up');">查询</a>
+                    <a id="btnAdd" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true" onclick="doAdd()">增加</a>
+                    <!--<a id="btnDetail" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-document',plain:true" onclick="goToDetail()">明细</a>
+                    <a id="btnSubmit" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-submit',plain:true">提交</a>-->
+                </div>
+            </div>
+        </header>
+        <div id="dl">
+        </div>
+    </div>
+    <div id="divSearchList" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a id="btnback" href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back()">退回</a>
+                </div>
+                <div class="m-title">查询</div>
+                <div class="m-right">                    
+                    <a id="A2" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true" onclick="searchClear()">清空</a>
+                    <a id="A3" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true" onclick="doSearch()">完成</a>
+                </div>
+            </div>
+        </header>
+        <form id="form1">
+        <ul id="ulSearchList" class="m-list">
+        </ul>
+        </form>
+    </div>
+    <div id="divLookUpList" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="lookUpMobile.reset();$.mobile.back();">退回</a>
+                </div>
+                <div id="divLookUpTitle" class="m-title"></div>
+                <!--<div class="m-right">
+                    <a id="A1" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true">清空</a>
+                    <a id="A4" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true">完成</a>
+                </div>-->
+            </div>
+        </header>
+        <div id="divLookUpResultList">
+        </div>
+    </div>
+</body>
+</html>

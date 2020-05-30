@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>测试</title>
+    <script type="text/javascript">
+        Page.Children.PbRecNos.push({ TableName: "MMStockProductCheckD", PbRecNos: "" });
+
+        $("#table1").attr("isson", "true");
+        $("#table1").attr("serialTableName", "MMStockProductCheckD");
+        $("#table1").attr("linkfield", "iRecNo=iMainRecNo"); $("#table1").attr("fieldkey", "iRecNo"); Page.tableToolbarCreate('table1');
+        $("#table1").datagrid({
+            fit: Page.Children.fit,
+            border: false, showFooter: true,
+            url: '/Base/Handler/getDataList2.ashx',
+            queryParams: { otype: 'childTable', iformid: '8023', tableName: 'MMStockProductCheckD', key: Page.key, random: Math.random },
+            onLoadError: function (result) { $.messager.alert('错误', result.responseText); },
+            onLoadSuccess: function (data) {
+                var tableSummryFields = [{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" },
+                    { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" },
+                    { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }];
+                $('#table1').datagrid('reloadFooter', Page.getChildFootData('table1', tableSummryFields, data, true));
+                if (Page.Children.onLoadSuccess) { Page.Children.onLoadSuccess('table1', data); }
+            },
+            columns: [[{ field: '__cb', checkbox: true, width: 30 },
+                { field: 'iSerial', align: 'center', title: '序号', editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 40 },
+                {
+                    field: 'sCode', align: 'center', title: '产品编号',
+                    lookupOptions: [{
+                        lookupName: 'bscDataMatProduct', uniqueid: '1580', condition: undefined, fields: '*', searchFields: '*',
+                        matchFields: ['sCode=sCode', 'sName=sName', 'fProductWidth=fProductWidth', 'fProductWeight=fProductWeight', 'iBscDataMatRecNo=iRecNo'], isMulti: false, editable: true, fixFilters: "iMatType=2 and (sCode like '%{this}%' or sName like '%{this}%')", nofixFilters: "1=1", pageSize: 20, loadFilters: undefined, width: 900, height: 400, onBeforeOpen: undefined, onAfterSelected: undefined
+                    }], editor: { type: 'textbox', options: { height: 25 } }, width: 100
+                },
+                { field: 'sName', align: 'center', title: '产品名称', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 100 },
+                { field: 'sSerial', align: 'center', title: '序列号', editor: { type: 'textbox', options: { height: 25 } }, width: 50 },
+                { field: 'sOrderNo', align: 'center', title: '盘点订单', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 100 },
+                {
+                    field: 'sColorID', align: 'center', title: '色号',
+                    lookupOptions: [{ lookupName: 'bscDataColor3', uniqueid: '1582', condition: undefined, fields: '*', searchFields: '*', matchFields: ['sColorID=sColorID', 'sColorName=sColorName', 'iBscDataColorRecNo=iRecNo'], isMulti: false, editable: true, fixFilters: "(sColorID like '%{this}%' or sColorName like '%{this}%')", nofixFilters: "1=1", pageSize: 20, loadFilters: undefined, width: 900, height: 400, onBeforeOpen: undefined, onAfterSelected: undefined }], editor: { type: 'textbox', options: { height: 25 } }, width: 100
+                },
+                { field: 'sColorName', align: 'center', title: '颜色', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 100 },
+                {
+                    field: 'fProductWidth', align: 'center', title: '<span style=color:red>幅宽*</span>',
+                    editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(0); }, width: 80
+                },
+            {
+                field: 'fProductWeight', align: 'center', title: '<span style=color:red>克重*</span>', editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(0); }, width: 100
+            },
+            { field: 'iStockQty', align: 'center', title: '库存匹数', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 100 },
+            {
+                field: 'fStockQty', align: 'center', title: '库存米数', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            },
+            {
+                field: 'fStockPurQty', align: 'center', title: '库存重量', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, {
+                field: 'fStockLetCode', align: 'center', title: '库存码数', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, { field: 'iPcQty', align: 'center', title: '盘点匹数', editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, {
+                field: 'fPcQty', align: 'center', title: '<span style=color:red>盘点米数*</span>', editor: { type: 'numberbox', options: { precision: 2, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, {
+                field: 'fPcPurQty', align: 'center', title: '盘点重量', editor: { type: 'numberbox', options: { precision: 2, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, {
+                field: 'fPcLetCode', align: 'center', title: '盘点码数', editor: { type: 'numberbox', options: { precision: 2, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, { field: 'iQty', align: 'center', title: '盈亏匹数', editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, {
+                field: 'fQty', align: 'center', title: '<span style=color:red>盈亏米数*</span>', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, {
+                field: 'fPurQty', align: 'center', title: '盈亏重量', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, {
+                field: 'fLetCode', align: 'center', title: '盈亏码数', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 60
+            }, { field: 'sBatchNo', align: 'center', title: '缸号', editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'sReelNo', align: 'center', title: '卷号', editor: { type: 'textbox', options: { height: 25 } }, width: 40 }, { field: 'sBarCode', align: 'center', title: '条码', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 100 }, { field: 'sBerChID', align: 'center', title: '仓位', lookupOptions: [{ lookupName: 'BscDataStockDSelect', uniqueid: '1584', condition: undefined, fields: '*', searchFields: '*', matchFields: ['iBscDataStockDRecNo=iRecNo', 'sBerChID=sBerChID'], isMulti: false, editable: true, fixFilters: "iMainRecNo='#m.iBscDataStockMRecNo#'", nofixFilters: "1=1", pageSize: 20, loadFilters: undefined, width: 900, height: 400, onBeforeOpen: undefined, onAfterSelected: undefined }], editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'sCustShortName', align: 'center', title: '库存供应商', lookupOptions: [{ lookupName: 'supplierSelect', uniqueid: '1586', condition: undefined, fields: '*', searchFields: '*', matchFields: ['iBscDataCustomerRecNo=iRecNo', 'sCustShortName=sCustShortName'], isMulti: false, editable: true, fixFilters: "1=1", nofixFilters: "1=1", pageSize: 20, loadFilters: undefined, width: 900, height: 400, onBeforeOpen: undefined, onAfterSelected: undefined }], editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'sProcessesName', align: 'center', title: '工序', styler: function (value, row, index) { return 'background-color:#ffffaa;' }, width: 80 }, { field: 'sReMark', align: 'center', title: '备注', editor: { type: 'textarea', options: { height: 25 } }, width: 150 }, { field: 'sFieldName1', align: 'center', title: '订单信息', editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'iStockSDOrderMRecNoBatch', align: 'center', title: 'iStockSDOrderMRecNoBatch', editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'iBscDataStockDRecNo', align: 'center', title: 'iBscDataStockDRecNo', hidden: true, editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 100 }, { field: 'iBscDataMatRecNo', align: 'center', title: 'iBscDataMatRecNo', hidden: true, editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 100 }, { field: 'iBscDataCustomerRecNo', align: 'center', title: 'iBscDataCustomerRecNo', hidden: true, editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 100 }, { field: 'iStockSdOrderMRecNo', align: 'center', title: 'iStockSdOrderMRecNo', hidden: true, editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 100 }, { field: 'iBscDataColorRecNo', align: 'center', title: 'iBscDataColorRecNo', hidden: true, editor: { type: 'numberbox', options: { precision: 0, height: 25 } }, width: 100 }, {
+                field: 'fStockPurQty', align: 'center', title: '库存米长', hidden: true, styler: function (value, row, index) { return 'background-color:#ffffaa;' }, formatter: function (value, row, index) { if (isNaN(parseFloat(value)) == false) { return parseFloat(value).toFixed(2) } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 80
+            }, { field: 'sUserID', align: 'center', title: 'sUserID', hidden: true, editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'dInputDate', align: 'center', title: 'dInputDate', hidden: true, editor: { type: 'datebox', options: { height: 25 } }, formatter: function (value, row, index) { if (value) { var indexblank = value.indexOf(' '); indexblank = indexblank == -1 ? value.indexOf('T') : indexblank; if (indexblank > -1) { return value.substr(0, indexblank); } return value; } }, width: 100 }, { field: 'iBscDataProcessMRecNo', align: 'center', title: 'iBscDataProcessMRecNo', hidden: true, editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'iSDContractDProcessDRecNo', align: 'center', title: 'iSDContractDProcessDRecNo', hidden: true, editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, { field: 'sFieldName2', align: 'center', title: '测试2', hidden: true, editor: { type: 'textbox', options: { height: 25 } }, width: 100 }, {
+                field: 'fFieldName3', align: 'center', title: 'fFieldName3', hidden: true, editor: { type: 'numberbox', options: { precision: 2, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 100
+            }, {
+                field: 'fFieldName4', align: 'center', title: 'fFieldName4', hidden: true, editor: { type: 'numberbox', options: { precision: 2, height: 25 } }, formatter:
+                function (value, row, index) { if (isNaN(parseFloat(value)) == false) return parseFloat(value).toFixed(2); }, width: 100
+            }, { field: 'iRecNo', hidden: true }, { field: 'iMainRecNo', hidden: true }]],
+            frozenColumns: [[]],
+            toolbar: '#toolbar_table1',
+            onClickRow:function (index, row) {
+                var tableID = this.id; if (Page.Children.onClickRow) { Page.Children.onClickRow(tableID, index, row); }
+            }, onDblClickRow:function (index, row) {
+               var tableID = this.id; if (Page.Children.onDblClickRow) { Page.Children.onDblClickRow(tableID, index, row) }
+           }, onClickCell:function (index, field, value) {
+             var tableID = this.id; if (Page.Children.onClickCell) { Page.Children.onClickCell(tableID, index, field, value); } return datagridOp.cellClick(tableID, index, field, value);
+         }, onDblClickCell:function (index, field, value) {
+            var tableID = this.id; if (Page.Children.onDblClickCell) { Page.Children.onDblClickCell(tableID, index, field, value); }
+        }, onBeforeEdit:
+       function (index, row) {
+           var tableID = this.id; if (Page.Children.onBeforeEdit) { if (Page.Children.onBeforeEdit(tableID, index, row) == false) return false; } return datagridOp.beforeEditor(tableID, index, row);
+       }, onBeginEdit:
+      function (index, row) {
+          var tableID = this.id; if (Page.Children.onBeginEdit) { if (Page.Children.onBeginEdit(tableID, index, row) == false) return false; } return datagridOp.beginEditor(tableID, index, row);
+      }, onEndEdit:
+     function (index, row, changes) {
+         var tableID = this.id; if (Page.Children.onEndEdit) { Page.Children.onEndEdit(tableID, index, row, changes); } datagridOp.endEditor(tableID, index, row, changes);
+     }, onAfterEdit: function (index, row, changes) {
+         try { if (datagridOp.currentColumnName == 'fPcQty' && changes.fPcQty) { var updateData = {}; updateData.fQty = row.fPcQty - (isNaN(parseFloat(row.fStockQty)) ? 0 : parseFloat(row.fStockQty)); $('#table1').datagrid('updateRow', { index: index, row: updateData }); } if (datagridOp.currentColumnName == 'fPcPurQty' && changes.fPcPurQty) { var updateData = {}; updateData.fPurQty = row.fPcPurQty - (isNaN(parseFloat(row.fStockPurQty)) ? 0 : parseFloat(row.fStockPurQty)); $('#table1').datagrid('updateRow', { index: index, row: updateData }); } if (datagridOp.currentColumnName == 'fPcLetCode' && changes.fPcLetCode) { var updateData = {}; updateData.fLetCode = row.fPcLetCode - (isNaN(parseFloat(row.fStockLetCode)) ? 0 : parseFloat(row.fStockLetCode)); $('#table1').datagrid('updateRow', { index: index, row: updateData }); } if (datagridOp.currentColumnName == 'iPcQty' && changes.iPcQty) { var updateData = {}; updateData.iQty = row.iPcQty - (isNaN(parseFloat(row.iStockQty)) ? 0 : parseFloat(row.iStockQty)); $('#table1').datagrid('updateRow', { index: index, row: updateData }); } } catch (e) { alert(e.message); } var tableSummryFields = [{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }];
+         $('#table1').datagrid('reloadFooter', Page.getChildFootData('table1', tableSummryFields)); var tableID = this.id; if (Page.Children.onAfterEdit) { Page.Children.onAfterEdit(tableID, index, row, changes); } datagridOp.afterEditor(index, row, changes);
+     }
+        }); var btnLists = []; btnLists.push({ type: 'dataForm', sStyle: '', sGroup: '', options: [{ uniqueid: '340', id: 'dataForm' + Page.NewGuid(), text: '成品库存转入', formid: '8201', menuid: '313', targetTableID: 'table1', type: 'table', width: 900, height: 400, fixFilters: "iBscDataStockMRecNo='#m.iBscDataStockMRecNo#'", nofixFilters: "1=1", tree: false, matchFields: ['sCode=sCode', 'sName=sName', 'sColorID=sColorID', 'iBscDataStockDRecNo=iBscDataStockDRecNo', 'iBscDataMatRecNo=iBscDataMatRecNo', 'sColorName=sColorName', 'iBscDataCustomerRecNo=iBscDataCustomerRecNo', 'iStockSdOrderMRecNo=iSdOrderMRecNo', 'iBscDataColorRecNo=iBscDataColorRecNo', 'fProductWidth=fProductWidth', 'fProductWeight=fProductWeight', 'sBatchNo=sBatchNo', 'sReelNo=sReelNo', 'sBarCode=sBarCode', 'fStockPurQty=fPurQty', 'fStockQty=fQty', 'fStockLetCode=sLetCode', 'sBerChID=sBerChID', 'sCustShortName=sCustShortName1', 'sProcessesName=sProcessesName', 'iBscDataProcessMRecNo=iBscDataProcessMRecNo', 'sSerial=sSerial', 'iStockQty=iQty', 'iSDContractDProcessDRecNo=iSDContractDProcessDRecNo', 'sOrderNo=sOrderNo', 'iStockSDOrderMRecNoBatch=iSDOrderMRecNoBatch'], isMulti: true, isCover: false, onBeforeOpen: undefined, onSelected: undefined }] }); btnLists.push({ type: 'dataForm', sStyle: '', sGroup: '', options: [{ uniqueid: '342', id: 'dataForm' + Page.NewGuid(), text: '产品工艺转入', formid: '5557', menuid: '308', targetTableID: 'table1', type: 'table', width: 900, height: 400, fixFilters: "1=1", nofixFilters: "1=1", tree: false, matchFields: ['sCode=sCode', 'sName=sName', 'iBscDataMatRecNo=iRecNo', 'fProductWidth=fProductWidth', 'fProductWeight=fProductWeight'], isMulti: true, isCover: false, onBeforeOpen: undefined, onSelected: undefined }] }); Page.tableToolbarImportCreate('table1', btnLists, 0);
+
+        Page.tableToolbarClick = function (type, tableid, appendData, nextID) {
+            if (tableid == 'table1') {
+                if (type == 'add') {
+                    if (Page.Children.onBeforeAddRow) { if (Page.Children.onBeforeAddRow(tableid) == false) return false; } if (appendData == undefined || appendData == null) { appendData = {}; } var nextRecNo = nextID ? nextID : Page.getChildID('MMStockProductCheckD'); if (nextRecNo == -1) { alert('获取子表主键值失败'); return false; } appendData.iSerial = $('#' + tableid).datagrid('getRows').length + 1; appendData.sUserID = Page.userid; appendData.dInputDate = Page.getNowDate() + ' ' + Page.getNowTime(); appendData.iRecNo = nextRecNo; appendData.__hxstate = 'add'; $('#' + tableid).datagrid('appendRow', appendData); var tableSummryFields = [{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }];
+                    if (nextID == null || nextID == undefined) { $('#' + tableid).datagrid('reloadFooter', Page.getChildFootData(tableid, tableSummryFields, null, null, appendData, 'add'));/*Page.Children.ReloadDynFooter(tableid,null,null,appendData,'add');*/ } if (Page.Children.onAfterAddRow) { Page.Children.onAfterAddRow(tableid); }
+                } if (type == 'delete') {
+                    if (Page.Children.onBeforeDeleteRow) { if (Page.Children.onBeforeDeleteRow(tableid, rows) == false) { return false; } } var rows = $('#' + tableid).datagrid('getChecked'); if (rows.length > 0) {
+                        $.messager.confirm('确认删除？', '您确认删除选择的行吗？', function (r) {
+                            if (r) {
+                                for (var i = 0; i < rows.length; i++) { var index = $('#' + tableid).datagrid('getRowIndex', rows[i]); var deleteKey = $('#' + tableid).attr('deleteKey'); if (deleteKey) { deleteKey += rows[i].iRecNo + ','; $('#' + tableid).attr('deleteKey', deleteKey); } else { $('#' + tableid).attr('deleteKey', rows[i].iRecNo + ','); } $('#' + tableid).datagrid('deleteRow', index); } var tableSummryFields = [{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }];
+                                $('#' + tableid).datagrid('reloadFooter', Page.getChildFootData(tableid, tableSummryFields, null, null, rows, 'delete'));/*$('#'+tableid).datagrid('reloadFooter',Page.Children.ReloadDynFooter(tableid,null,null,rows,'delete'));*/ if (Page.Children.onAfterDeleteRow) { Page.Children.onAfterDeleteRow(tableid, rows); }
+                            }
+                        });
+                    }
+                }
+            }
+        };
+        var fieldChildRequired = [];
+        if (Page.Children.SummaryFields == undefined) { Page.Children.SummaryFields = [{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }]; }
+
+        else { Page.Children.SummaryFields = Page.Children.SummaryFields.concat([{ TableName: "table1", Type: "sum", Field: "fQty", MainField: "fQty", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fLetCode", MainField: "fLetCode", iDigit: "0" }, { TableName: "table1", Type: "sum", Field: "fPurQty", MainField: "fPurQty", iDigit: "0" }]); }
+        fieldChildRequired.push({ table: 'table1', field: 'fProductWidth', title: '幅宽' }); fieldChildRequired.push({ table: 'table1', field: 'fProductWeight', title: '克重' }); fieldChildRequired.push({ table: 'table1', field: 'fPcQty', title: '盘点米数' }); fieldChildRequired.push({ table: 'table1', field: 'fQty', title: '盈亏米数' }); Page.validateNullChild = function () {
+            if (fieldChildRequired.length > 0) {
+                for (var i = 0; i < fieldChildRequired.length; i++) {
+                    var rows = $('#' + fieldChildRequired[i].table).datagrid('getRows');
+                    for (var j = 0; j < rows.length; j++) {
+                        if ((rows[j][(fieldChildRequired[i].field)] == '' && (isNaN(parseInt(rows[j][(fieldChildRequired[i].field)])) == true || (isNaN(parseInt(rows[j][(fieldChildRequired[i].field)])) == false && parseInt(rows[j][(fieldChildRequired[i].field)]) != 0))) || rows[j][(fieldChildRequired[i].field)] == undefined || rows[j][(fieldChildRequired[i].field)] == null) {
+                            $.messager.alert('错误', '第' + (j + 1) + '行:' + fieldChildRequired[i].title + '不能为空！'); return false;
+                        }
+                    }
+                }
+            } else { return true; }
+        };
+    </script>
+</head>
+<body>
+
+</body>
+</html>

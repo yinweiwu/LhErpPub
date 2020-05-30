@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>审批</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        var total = 0;
+        var rowCount = 0;
+        $(function () {
+            //获取当前人
+            $.ajax(
+                {
+                    url: "../ashx/LoginHandler.ashx",
+                    type: "post",
+                    cache: false,
+                    async: false,
+                    data: { otype: "getcurtuserid" },
+                    success: function (data) {
+                        userid = data;
+                    }
+                }
+            )
+
+            $("#dlNoCheck").datalist(
+                    {
+                        fit: true,
+                        lines: true,
+                        border: false,
+                        textFormatter: function (value, row, index) {
+                            var html = "";
+                            html += "<div><span style='color:blue;'>" + row.sBillType + "</span></div>";
+                            html += "<div><span>" + row.sAppContent + "</span></div>";
+                            return "<a href=\"javascript:void(0)\" class=\"datalist-link\">" + html + "</a>";
+                        },
+                        onClickRow: function (index, row) {
+                            window.location.href = "checkDetail.htm?iFormID=" + row.iFormid + "&iMessageRecNo=" + row.iRecNo + "&iRecNo=" + row.iBillRecNo + "&iType=" + row.iType + "&r=" + Math.random();
+                        },
+                        rowStyler: function (index, row) {
+                            return "height:8px;";
+                        }
+                    }
+                );
+            $("#dlChecked").datalist(
+                    {
+                        fit: true,
+                        lines: true,
+                        border: false,
+                        textFormatter: function (value, row, index) {
+                            if (row.iRecNo) {
+                                var html = "";
+                                html += "<div><span style='color:blue;'>" + row.sBillType + "</span></div>";
+                                html += "<div><span>" + row.sAppContent + "</span></div>";
+                                return "<a href=\"javascript:void(0)\" class=\"datalist-link\">" + html + "</a>";
+                            }
+                            else {
+                                return "点击加载更多...";
+                            }
+                        },
+                        onClickRow: function (index, row) {
+                            if (row.iRecNo) {
+                                window.location.href = "checkDetail.htm?iFormID=" + row.iFormid + "&iMessageRecNo=" + row.iRecNo + "&iRecNo=" + row.iBillRecNo + "&from=checked&r=" + Math.random();
+                            }
+                            else {
+                                getCheckedList();
+                            }
+                        },
+                        rowStyler: function (index, row) {
+                            return "height:8px;";
+                        }
+                    }
+                )
+
+            //获取未审批列表
+            $.ajax(
+                {
+                    url: "Handler/MobileCheckHandler.ashx",
+                    type: "post",
+                    cache: false,
+                    async: false,
+                    data: { otype: "GetNoCheckList" },
+                    success: function (obj) {
+                        if (obj.success == true) {
+                            var data = obj.tables[0];
+                            $("#dlNoCheck").datalist("loadData", data);
+                            $("#spanNoCheckCount").html(data.length);
+                        }
+                        else {
+                            showMessage("获取未审批出错", obj.message);
+                        }
+                    },
+                    dataType: "json"
+                }
+            )
+
+            getCheckedList();
+        })
+        function getCheckedList() {
+            var rows = $("#dlChecked").datalist("getRows");
+            //如果total=rowCount则表示要么没有数据，要么全部数据加载完成。未加载全部数据时，在最后一行加一个【加载更多...】的行
+            var skipRow = total == rowCount ? 0 : rows.length - 1;
+            //获取未审批列表
+            $.ajax(
+                {
+                    url: "Handler/MobileCheckHandler.ashx",
+                    type: "post",
+                    cache: false,
+                    async: false,
+                    data: { otype: "GetCheckedList", chooseCount: 30, skipCount: skipRow },
+                    success: function (obj) {
+                        if (obj.success == true) {
+                            if (total > rowCount) {
+                                $("#dlChecked").datalist("deleteRow", rows.length - 1);
+                            }
+                            total = obj.tables[1][0].c;
+                            var data = obj.tables[0];
+                            var dataAll = rows.concat(data);
+                            $("#dlChecked").datalist("loadData", dataAll);
+                            data = rows = null;
+                            rowCount = dataAll.length;
+                            if (rowCount < total) {
+                                //如果
+                                var btnRow = {};
+                                $("#dlChecked").datalist("appendRow", btnRow);
+                            }
+
+                        }
+                        else {
+                            showMessage("获取已审批时出错", obj.message);
+                        }
+                    },
+                    dataType: "json"
+                }
+            )
+        }
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+
+        function showMessage(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+
+    </script>
+</head>
+<body>
+    <div class="easyui-navpanel">
+        <div class="easyui-tabs" data-options="tabHeight:40,fit:true,tabPosition:'bottom',border:false,pill:true,narrow:true,justified:true">
+            <div title="待办事项">
+                <div class="panel-header tt-inner">待办事项
+                    <span class="m-badge" id="spanNoCheckCount"></span>
+                </div>
+                <div id="dlNoCheck">
+                </div>
+            </div>
+            <div title="已办事项">
+                <div id="dlChecked">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

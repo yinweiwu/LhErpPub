@@ -1,0 +1,267 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>发送微信消息</title>
+    <script src="JS/jquery.easyui.min.js"></script>
+    <script src="Base/JS/json2.js"></script>
+    <script src="Base/JS/DataInterface.js?r=1"></script>
+    <script type="text/javascript">
+        var iSendCount = 3;
+        var iintervalMinute = 30;
+        //[{GUID:"",Count:0,LastStopTime:Date}]
+        var errorMessageInfo = [];
+
+        var sqlObjP = {
+            TableName: "bscDataListD",
+            Fields: "*",
+            SelectAll: "True",
+            Filters: [
+                {
+                    Field: "sClassID",
+                    ComOprt: "=",
+                    Value: "'sendCount'"
+                }
+            ]
+        }
+        var resultP = SqlGetData(sqlObjP);
+        if (resultP.length > 0) {
+            for (var i = 0; i < resultP.length; i++) {
+                if (resultP[i].sCode == "sendCount") {
+                    iSendCount = isNaN(Number(resultP[i].sName)) ? 3 : Number(resultP[i].sName);
+                }
+                if (resultP[i].sCode == "intervalMinute") {
+                    iintervalMinute = isNaN(Number(resultP[i].sName)) ? 3 : Number(resultP[i].sName);
+                }
+            }
+        }
+
+        //供应商、客户新订单
+        function sendNewOrderMessage() {
+            var sqlObjSupOder = {
+                TableName: "WeiXinMessageTmp",
+                Fields: "*",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iType",
+                        ComOprt: "in",
+                        Value: "(0,1)",
+                        LinkOprt: "and"
+                    }, {
+                        Field: "iConfirm",
+                        ComOprt: "=",
+                        Value: "0",
+                        LinkOprt: "and"
+                    }
+                    , {
+                        Field: "iDeleted",
+                        ComOprt: "=",
+                        Value: "0",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "iSendCount",
+                        ComOprt: "<",
+                        Value: iSendCount,
+                        LinkOprt: "and"
+                    }, {
+                        Field: "datediff(minute,isnull(dSendTime1,'2000-01-01'),getdate())",
+                        ComOprt: ">",
+                        Value: iintervalMinute
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "dInputDate",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultSupOrder = SqlGetData(sqlObjSupOder);
+            if (resultSupOrder.length > 0) {
+                for (var i = 0; i < resultSupOrder.length; i++) {
+                    var errorInfo = isInErroMessage(resultSupOrder[i].GUID);
+                    if (errorInfo != false) {
+                        if (errorInfo.Count % 5 > 0) {
+                            errorInfo.Count += 1;
+                            if (errorInfo.Count % 5 == 0) {
+                                errorInfo.LastStopTime = new Date();
+                            }
+                        }
+                        else {
+                            var dateDiff = new Date() - errorInfo.LastStopTime;
+                            var minutes = Math.floor(dateDiff / 1000 / 60);
+                            if (minutes < 120) {
+                                continue;
+                            } else {
+                                errorInfo.Count += 1;
+                            }
+                        }
+                    }
+
+                    var keyWord = [];
+                    keyWord.push(resultSupOrder[i].sKeyword1);
+                    keyWord.push(resultSupOrder[i].sKeyword2);
+                    keyWord.push(resultSupOrder[i].sKeyword3);
+                    var message = {
+                        first: resultSupOrder[i].sFirst,
+                        keyword: keyWord,
+                        remark: resultSupOrder[i].sRemark
+                    }
+                    var s = sendWeiXinMessage(resultSupOrder[i].sTemplateID, resultSupOrder[i].sOpenID, message, resultSupOrder[i].sUrl);
+                    if (s) {
+                        var jsonobj = {
+                            StoreProName: "SpSDContractMWeixinSendSet",
+                            StoreParms: [{
+                                ParmName: "@sGuid",
+                                Value: resultSupOrder[i].GUID
+                            }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            //alert(result);
+                        }
+                    } else {
+                        if (isInErroMessage(resultSupOrder[i].GUID) == false) {
+                            errorMessageInfo.push({ GUID: resultSupOrder[i].GUID, Count: 1, LastStopTime: null });
+                        }
+                    }
+                }
+            }
+        }
+        //供应商确认给业务员发信息iType=8
+        //采购入库给客户发信息iType=6
+        //销售出库iType=7
+        function sendNewSupOrderConfirmMessage() {
+            var sqlObjSupOder = {
+                TableName: "WeiXinMessageTmp",
+                Fields: "*",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iType",
+                        ComOprt: "in",
+                        Value: "(6,7,8)",
+                        LinkOprt: "and"
+                    }, {
+                        Field: "iConfirm",
+                        ComOprt: "=",
+                        Value: "0",
+                        LinkOprt: "and"
+                    }
+                    , {
+                        Field: "iDeleted",
+                        ComOprt: "=",
+                        Value: "0"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "dInputDate",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultSupOrder = SqlGetData(sqlObjSupOder);
+            if (resultSupOrder.length > 0) {
+                for (var i = 0; i < resultSupOrder.length; i++) {
+                    var errorInfo = isInErroMessage(resultSupOrder[i].GUID);
+                    if (errorInfo != false) {
+                        if (errorInfo.Count % 5 > 0) {
+                            errorInfo.Count += 1;
+                            if (errorInfo.Count % 5 == 0) {
+                                errorInfo.LastStopTime = new Date();
+                            }
+                        }
+                        else {
+                            var dateDiff = new Date() - errorInfo.LastStopTime;
+                            var minutes = Math.floor(dateDiff / 1000 / 60);
+                            if (minutes < 120) {
+                                continue;
+                            } else {
+                                errorInfo.Count += 1;
+                            }
+                        }
+                    }
+                    var keyWord = [];
+                    keyWord.push(resultSupOrder[i].sKeyword1);
+                    keyWord.push(resultSupOrder[i].sKeyword2);
+                    keyWord.push(resultSupOrder[i].sKeyword3);
+                    keyWord.push(resultSupOrder[i].sKeyword4);
+                    keyWord.push(resultSupOrder[i].sKeyword5);
+                    var message = {
+                        first: resultSupOrder[i].sFirst,
+                        keyword: keyWord,
+                        remark: resultSupOrder[i].sRemark
+                    }
+                    var s = sendWeiXinMessage(resultSupOrder[i].sTemplateID, resultSupOrder[i].sOpenID, message, resultSupOrder[i].sUrl);
+                    if (s) {
+                        var jsonobj = {
+                            StoreProName: "SpSDContractMWeixinSendSet",
+                            StoreParms: [{
+                                ParmName: "@sGuid",
+                                Value: resultSupOrder[i].GUID
+                            }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            //alert(result);
+                        }
+                    } else {
+                        if (isInErroMessage(resultSupOrder[i].GUID) == false) {
+                            errorMessageInfo.push({ GUID: resultSupOrder[i].GUID, Count: 1, LastStopTime: null });
+                        }
+                    }
+                }
+            }
+        }
+
+        function isInErroMessage(GUID) {
+            var isIn = false;
+            for (var j = 0; j < errorMessageInfo.length; j++) {
+                if (errorMessageInfo[j].GUID == GUID) {
+                    return errorMessageInfo[j];
+                }
+            }
+            return isIn;
+        }
+
+
+
+        var delay = 10000;
+        var s = null;
+        function timer(fn, delay) {
+            s = setTimeout(function () {
+                fn();
+                timer(fn, delay);
+            });
+        }
+
+        var isStarted = false;
+        function beginOrStop() {
+            if (isStarted) {
+                isStarted = false;
+
+                document.getElementById("Button1").value = "开始运行";
+                clearTimeout(s);
+            }
+            else {
+                isStarted = true;
+                document.getElementById("Button1").value = "正在运行中。。。";
+                timer(function () {
+                    sendNewOrderMessage();
+                    sendNewSupOrderConfirmMessage();
+                }, delay);
+            }
+        }
+    </script>
+</head>
+<body>
+    <div style="margin-top:150px; text-align:center;width:100%;">
+        <input id="Button1" type="button" value="开始运行" style="width: 400px; height: 80px; font-size: 30px; font-family:微软雅黑; " onclick="beginOrStop()" />
+    </div>
+</body>
+</html>

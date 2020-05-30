@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>报表</title>
+    <link href="/Base/js/StimulsoftReport2017.1.4/Libs/JS/css/stimulsoft.viewer.office2013.whiteblue.css"
+          rel="stylesheet" />
+    <!-- Report Designer Office2013 style -->
+    <link href="/Base/js/StimulsoftReport2017.1.4/Libs/JS/css/stimulsoft.designer.office2013.whiteblue.css"
+          rel="stylesheet" />
+    <!-- Stimusloft Reports.JS -->
+    <script src="/Base/js/StimulsoftReport2017.1.4/Libs/JS/Scripts/stimulsoft.reports.js" type="text/javascript"></script>
+    <script src="/Base/js/StimulsoftReport2017.1.4/Libs/JS/Scripts/stimulsoft.viewer.js" type="text/javascript"></script>
+    <script src="/Base/js/StimulsoftReport2017.1.4/Libs/JS/Scripts/stimulsoft.designer.js" type="text/javascript"></script>
+    <script src="/JS/jquery.easyui.min.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        Stimulsoft.Base.Localization.StiLocalization.addLocalizationFile("/Base/js/StimulsoftReport2017.1.4/Localization/zh-CHS.xml", false, "Chinese (Simplified)");
+        Stimulsoft.Base.Localization.StiLocalization.addLocalizationFile("/Base/js/StimulsoftReport2017.1.4/Localization/zh-CHT.xml", false, "Chinese (Traditional)");
+
+        var loc = getParameterFromUrl("localization");
+        if (loc && getLocName(loc)) {
+            Stimulsoft.Base.Localization.StiLocalization.addLocalizationFile("/Base/js/StimulsoftReport2017.1.4/Localization/" + loc + ".xml", false, getLocName(loc));
+            Stimulsoft.Base.Localization.StiLocalization.cultureName = getLocName(loc);
+        }
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        var viewer = null;
+        var designer = null;
+
+        if (getQueryString("otype") == "view") {
+            var options = new Stimulsoft.Viewer.StiViewerOptions();
+            options.appearance.fullScreenMode = true;
+            options.appearance.htmlRenderMode = Stimulsoft.Report.Export.StiHtmlExportMode.Table;
+            viewer = new Stimulsoft.Viewer.StiViewer(options, "StiViewer", false);
+            var report = new Stimulsoft.Report.StiReport();
+            var dataSet = new Stimulsoft.System.Data.DataSet("dataSet");
+            var dataSetExtra = new Stimulsoft.System.Data.DataSet("dataSetExtra");
+            report = window.opener.hxStimulsoftReport.getReport(report, dataSet, dataSetExtra);
+            viewer.report = report;
+            //viewer.renderHtml("designContent");
+            viewer.renderHtml("viewContent");
+            if (designer) {
+                deginer.visible = false;
+            }
+        }
+        else {
+            var options = new Stimulsoft.Designer.StiDesignerOptions();
+            options.appearance.fullScreenMode = true;
+            options.appearance.htmlRenderMode = Stimulsoft.Report.Export.StiHtmlExportMode.Table;
+            designer = new Stimulsoft.Designer.StiDesigner(options, "StiDesigner", false);
+            designer.onSaveReport = function (event) {
+                var jsonStr = event.report.saveToJsonString();
+                //保存报表到数据库
+                $.ajax(
+                    {
+                        url: "/Base/Handler/PbHandler.ashx",
+                        type: "post",
+                        async: false,
+                        cache: false,
+                        data: { from: "saveStimulsoftReport", iRecNo: window.opener.hxStimulsoftReport.reportRecNo, str: jsonStr },
+                        success: function (resObj) {
+                            if (resObj.success == true) {
+                                alert("保存成功！");
+                            }
+                            else {
+                                alert("保存出错:" + resObj.message);
+                            }
+                        },
+                        error: function (data) {
+                            alert("保存时发生未知错误");
+                        },
+                        dataType: "json"
+                    })
+            }
+            var report = new Stimulsoft.Report.StiReport();
+            var dataSet = new Stimulsoft.System.Data.DataSet("dataSet");
+            var dataSetExtra = new Stimulsoft.System.Data.DataSet("dataSetExtra");
+            report = window.opener.hxStimulsoftReport.getReport(report, dataSet, dataSetExtra);
+            designer.report = report;
+            designer.renderHtml("designContent");
+            if (viewer) {
+                viewer.visible = false;
+            }
+        }
+
+
+        function getParameterFromUrl(name) {
+            var url = window.location.href;
+            name = name.replace(/[\[\]]/g, "\\$&");
+            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+			results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, " "));
+        }
+
+        function getLocName(locShortName) {
+            switch (locShortName) {
+                case "ar": return "Arabic";
+                case "be": return "Belarusian";
+                case "bg": return "Bulgarian";
+                case "ca-ES": return "Catalan";
+                case "cs": return "Czech";
+                case "de": return "Deutsch";
+                case "el-GR": return "Greek";
+                case "es": return "Spanish";
+                case "eu-ES": return "Basque";
+                case "fa": return "Farsi";
+                case "fr": return "French";
+                case "gl-ES": return "Galician";
+                case "hr": return "Croatian";
+                case "hu": return "Hungarian";
+                case "id": return "Indonesian";
+                case "it": return "Italian";
+                case "ka": return "Georgian";
+                case "Lt-sr-SP": return "Serbian (Latin)";
+                case "lt": return "Lithuanian";
+                case "nb-NO": return "Norwegian (Bokmål)";
+                case "nl": return "Dutch";
+                case "pl": return "Polish";
+                case "pt-BR": return "Portuguese (Brazil)";
+                case "ro": return "Romanian";
+                case "ru": return "Russian";
+                case "sk": return "Slovak";
+                case "sv": return "Swedish";
+                case "tr": return "Turkish";
+                case "uk": return "Ukrainian";
+                case "zh-CHS": return "Chinese (Simplified)";
+                case "zh-CHT": return "Chinese (Traditional)";
+                default: return null;
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="viewContent">
+    </div>
+    <div id="designContent">
+    </div>
+</body>
+</html>

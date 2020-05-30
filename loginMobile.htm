@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>欢迎登录环鑫ERP系统</title>
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/gray/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            $("#dlg1").dialog("center");
+
+            var url = "ashx/LoginHandler.ashx?otype=getuserid";
+            var parms = "";
+            var async = false;
+            var ispost = false;
+            var result = callpostback(url, parms, async, ispost);
+            if (result != "") {
+                var resultObj = JSON2.parse(result);
+                //document.getElementById("TxtUserName").value = resultObj.userid;
+                //document.getElementById("TxtPassword").value = resultObj.pwd;
+                $("#TxtUserName").textbox("setValue", resultObj.userid);
+                $("#TxtPassword").textbox("setValue", resultObj.pwd);
+            }
+            else {
+                //document.getElementById("TxtUserName").focus();
+            }
+        })
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        function login() {
+            var user = document.getElementById("TxtUserName").value;
+            var pwd = document.getElementById("TxtPassword").value;
+            var isRemeber = 1;
+            if (user == "") {
+                alert("请输入用户名");
+                return;
+            }
+            var url = "ashx/LoginHandler.ashx";
+            var parms = "userid=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pwd) + "&remember=" + isRemeber + "&loginUrl=" + window.location.pathname;
+            var async = false;
+            var ispost = true;
+            var result = callpostback(url, parms, async, ispost);
+            if (result.indexOf("warn") > -1 || result.indexOf("error") > -1) {
+                alert(result.substr(result.indexOf(":") + 1, result.length - result.indexOf(":") - 1));
+            }
+            else {
+                var returnurl = decodeURIComponent(getQueryString("ReturnUrl"));
+
+                if (returnurl != "null" && returnurl != null && returnurl != "/") {
+                    window.location.href = returnurl + "?random=" + Math.random();
+                }
+                else {
+                    window.location.href = "Mobile/default.htm?random=" + Math.random();
+                }
+
+            }
+        }
+        function backPc() {
+            window.location.href = "login.htm?from=mobile&random=" + Math.random();
+        }
+
+        function callpostback(url, parms, async, ispost) {
+            var xmlhttp;
+            if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp = new XMLHttpRequest();
+            }
+            else {// code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            if (async) {
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                        return xmlhttp.responseText;
+                    }
+                    //document.getElementById("operatresult").value = xmlhttp.responseText;
+                    //$("#operatresult").value = xmlhttp.responseText;
+                }
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+            }
+            else {
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+                var result = xmlhttp.status;
+                if (result == 200) {
+                    return xmlhttp.responseText;
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="easyui-navpanel" style="position: relative">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-title">欢迎使用环鑫科技ERP系统</div>
+            </div>
+        </header>
+        <div id="dlg1" class="easyui-dialog" style="padding: 20px 6px; width: 80%;" data-options="inline:true,modal:true,title:'用户登录'">
+            <div style="margin-bottom: 10px">
+                <input id="TxtUserName" class="easyui-textbox" prompt="用户名" style="width: 100%; height: 40px">
+            </div>
+            <div>
+                <input id="TxtPassword" class="easyui-textbox" type="password" prompt="密码" style="width: 100%;
+                    height: 40px">
+            </div>
+            <div class="dialog-button">
+                <a href="javascript:void(0)" class="easyui-linkbutton" style="width: 100%; height: 35px"
+                    onclick="login()">登录</a>
+            </div>
+            <div class="dialog-button">
+                <a href="javascript:void(0)" class="easyui-linkbutton" style="width: 100%; height: 35px"
+                    onclick="backPc()">返回电脑版</a>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

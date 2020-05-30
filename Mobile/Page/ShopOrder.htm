@@ -1,0 +1,645 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>门店下单</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript" src="/Mobile/JS/LookUpMobile.js"></script>
+    <script src="/Mobile/JS/PageMobile.js" type="text/javascript"></script>
+    <script src="/Base/JS/approval.js" type="text/javascript"></script>
+    <style type="text/css">
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 18px;*/ /*border-radius: 5px;*/
+        }
+    </style>
+    <script language="javascript" type="text/javascript">
+        pageMobile.beforeInit = function () {
+            //单价
+            $("#Text15").combobox(
+                    {
+                        valueField: "fPrice",
+                        textField: "sPriceTypeFull",
+                        editable: true
+                    }
+            );
+            //银行
+            var bankData = [
+                {
+                    value: "中国工商银行",
+                    text: "中国工商银行"
+                },
+                {
+                    value: "中国农业银行",
+                    text: "中国农业银行"
+                },
+                {
+                    value: "中国银行",
+                    text: "中国银行"
+                },
+                {
+                    value: "中国建设银行",
+                    text: "中国建设银行"
+                },
+                {
+                    value: "交通银行",
+                    text: "交通银行"
+                },
+                {
+                    value: "中国邮政储蓄",
+                    text: "中国邮政储蓄"
+                },
+                {
+                    value: "中国农村信用社",
+                    text: "中国农村信用社"
+                }
+            ];
+            $("#Text27").combobox(
+                    {
+                        valueField: "value",
+                        textField: "text",
+                        editable: true,
+                        data: bankData,
+                        width: 155
+                    }
+            );
+        }
+
+        $(function () {
+            if (pageMobile.usetype == "modify" || pageMobile.usetype == "view") {
+                var iSumQty = isNaN(Number(pageMobile.getFieldValue("iSumQty"))) ? 0 : Number(pageMobile.getFieldValue("iSumQty"));
+                var fPrice = isNaN(Number(pageMobile.getFieldValue("fPrice"))) ? 0 : Number(pageMobile.getFieldValue("fPrice"));
+                var fTotal = iSumQty * fPrice;
+                pageMobile.setFieldValue("fTotal", fTotal);
+            }
+            if (pageMobile.isDetail == "0") {
+
+                pageMobile.toolBarBtnAdd("msubmit", "提交", "ok", function () {
+                    var sqlObjExists = {
+                        TableName: "PDAOrderM",
+                        Fields: "1",
+                        SelectAll: "True",
+                        Filters: [
+                            {
+                                Field: "iRecNo",
+                                ComOprt: "=",
+                                Value: "'" + pageMobile.key + "'"
+                            }
+                        ]
+                    }
+                    var resultExists = SqlGetData(sqlObjExists);
+                    if (resultExists.length > 0) {
+                        var sqlObj = {
+                            TableName: "PDAOrderD",
+                            Fields: "sum(fPrice*iSumQty) as fTotal",
+                            SelectAll: "True",
+                            Filters: [
+                            {
+                                Field: "iMainRecNo",
+                                ComOprt: "=",
+                                Value: "'" + pageMobile.key + "'"
+                            }
+                        ]
+                        }
+                        var result = SqlGetData(sqlObj);
+                        if (result.length > 0) {
+                            if (result[0].fTotal != "") {
+                                $("#Text20").numberbox("setValue", result[0].fTotal);
+                                $.mobile.go("#divSubmit");
+                            }
+                            else {
+                                showMessage("没有明细数据", "对不起，尚未增加明细数据！");
+                            }
+                        }
+                        else {
+                            showMessage("没有明细数据", "对不起，尚未增加明细数据！");
+                        }
+                    }
+                    else {
+                        showMessage("请先保存", "请先保存再提交！");
+                    }
+                });
+                pageMobile.toolBarBtnAdd("mprint", "打印", "print", function () {
+                    var sqlObjOrder = {
+                        TableName: "SDContractM",
+                        Fields: "fCardMoney,fCashMoney,fRemitMoney",
+                        SelectAll: "True",
+                        Filters: [
+                            {
+                                Field: "iRecNo",
+                                ComOprt: "=",
+                                Value: "'" + pageMobile.key + "'"
+                            }
+                        ]
+                    }
+                    var resultOrder = SqlGetData(sqlObjOrder);
+                    if (resultOrder.length > 0) {
+                        window.location.href = "ShopOrderPrint.htm?iRecNo=" + pageMobile.key + "&card=" + resultOrder[0].fCardMoney + "&money=" + resultOrder[0].fCashMoney + "&hk=" + resultOrder[0].fRemitMoney + "&r=" + Math.random();
+                    }
+                    else {
+                        showMessage("请提交后打印", "请提交后打印");
+                    }
+                });
+            }
+            if (pageMobile.isDetail == "1") {
+                //获取上一次的款号
+                var lastKey = getQueryString("lastKey");
+                if (lastKey != null) {
+                    var sqlLast = {
+                        TableName: "PDAOrderD",
+                        Fields: "ibscDataStyleMRecNo",
+                        SelectAll: "True",
+                        Filters: [
+                            {
+                                Field: "iRecNo",
+                                ComOprt: "=",
+                                Value: "'" + lastKey + "'"
+                            }
+                        ]
+                    }
+                    var result = SqlGetData(sqlLast);
+                    if (result.length > 0) {
+                        pageMobile.setFieldValue("ibscDataStyleMRecNo", result[0].ibscDataStyleMRecNo);
+                    }
+                }
+            }
+        })
+
+        lookUpMobile.afterSelected = function (uniqueid, data) {
+            //if (pageMobile.isInited == true) {
+            if (uniqueid == "4" || uniqueid == "6") {
+                var ibscDataStyleMRecNo = pageMobile.getFieldValue("ibscDataStyleMRecNo");
+                var ibscDataColorRecNo = pageMobile.getFieldValue("ibscDataColorRecNo");
+                var mainData = $("#form1").serializeObject();
+                var ibscDataCustomerRecNo = mainData.ibscDataCustomerRecNo;
+                var jsonobj = {
+                    StoreProName: "SpGetStylePrice",
+                    StoreParms: [
+                    {
+                        ParmName: "@iBscDataStyleMRecNo",
+                        Value: ibscDataStyleMRecNo
+                    },
+                    {
+                        ParmName: "@iBscDataCustomerRecNo",
+                        Value: ibscDataCustomerRecNo
+
+                    },
+                    {
+                        ParmName: "@iBscDataColorRecNo",
+                        Value: ibscDataColorRecNo
+
+                    }
+                    ]
+                }
+                var result = SqlStoreProce(jsonobj, true);
+                $("#Text15").combobox("loadData", result.Rows);
+            }
+            //}
+        }
+
+        var isSizeLoad = false;
+        function openSizeDetail() {
+            if (isSizeLoad == false) {
+                var mainData = $("#form1").serializeObject();
+                var sSizeGroupID = mainData.sSizeGroupID;
+                var sqlObj = {
+                    TableName: "bscDataSize",
+                    Fields: "sSizeName",
+                    SelectAll: "True",
+                    Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "=",
+                        Value: "'" + sSizeGroupID + "'"
+                    }
+                ]
+                }
+                var result = SqlGetData(sqlObj);
+                if (result.length > 0) {
+                    var htmlLi = "";
+                    for (var i = 0; i < result.length; i++) {
+                        htmlLi += "<li>" + result[i].sSizeName;
+                        htmlLi += "<div class=\"m-right\">";
+                        htmlLi += "<input name=\"" + result[i].sSizeName + "\" type=\"text\" class=\"easyui-numberbox\" data-options=\"width:120,precision:0\" />";
+                        htmlLi += "</div></li>";
+                    }
+                    var chtml = $(htmlLi);
+                    $("#ulSizeDetail").append(chtml);
+                    $.parser.parse("#ulSizeDetail");
+                    isSizeLoad = true;
+
+                    //获取已有的尺码明细
+                    var sqlObjSize = {
+                        TableName: "PDAOrderDD",
+                        Fields: "sSize,fQty",
+                        SelectAll: "True",
+                        Filters: [
+                            {
+                                Field: "iMainRecNo",
+                                ComOprt: "=",
+                                Value: "'" + pageMobile.key + "'"
+                            }
+                        ]
+                    }
+                    var resultSize = SqlGetData(sqlObjSize);
+                    if (resultSize.length > 0) {
+                        var sizeDataS = {};
+                        for (var i = 0; i < resultSize.length; i++) {
+                            sizeDataS[(resultSize[i].sSize)] = resultSize[i].fQty;
+                        }
+                        $("#form3").form("load", sizeDataS);
+                    }
+                }
+            }
+            $.mobile.go("#divSize");
+        }
+        function clearVal() {
+            $("#form3").form("clear");
+        }
+        function sizeFinish() {
+            var sizeData = $("#form3").serializeArray();
+            var iSumQty = 0;
+            var sStr = "";
+            for (var i = 0; i < sizeData.length; i++) {
+                iSumQty += isNaN(Number(sizeData[i].value)) ? 0 : Number(sizeData[i].value);
+                sStr += sizeData[i].name + "=" + sizeData[i].value + ",";
+            }
+            if (sStr != "") {
+                sStr = sStr.substr(0, sStr.length - 1);
+            }
+            pageMobile.setFieldValue("iSumQty", iSumQty);
+            var fPrice = isNaN(Number(pageMobile.getFieldValue("fPrice"))) ? 0 : Number(pageMobile.getFieldValue("fPrice"));
+            var fTotal = iSumQty * fPrice;
+            pageMobile.setFieldValue("fTotal", fPrice * iSumQty);
+
+            var jsonobj = {
+                StoreProName: "SpPDAOrderDDSave",
+                StoreParms: [
+                        {
+                            ParmName: "@iMainRecNo",
+                            Value: pageMobile.key
+                        },
+                        {
+                            ParmName: "@sStr",
+                            Value: sStr,
+                            Size: -1
+                        }
+                 ]
+            }
+            var result = SqlStoreProce(jsonobj);
+            if (result != "1") {
+                showMessage("保存时出错", result);
+            }
+            else {
+                $.mobile.back();
+            }
+        }
+        function doSubmit() {
+            $.messager.confirm("确认吗？", "您确认提交吗？", function (r) {
+                if (r) {
+                    var formData = $("#form4").serializeObject();
+                    var jsonobj = {
+                        StoreProName: "SpPDAOrderSubmit1",
+                        StoreParms: [{
+                            ParmName: "@iPDAOrderMRecNo",
+                            Value: pageMobile.key
+                        },
+                        {
+                            ParmName: "@ibscDataStockMRecNo",
+                            Value: pageMobile.getFieldValue("ibscDataStockMRecNo")
+                        },
+                        {
+                            ParmName: "@fCard",
+                            Value: isNaN(Number(formData.fCard)) ? 0 : Number(formData.fCard)
+                        }
+                        ,
+                        {
+                            ParmName: "@fMoney",
+                            Value: isNaN(Number(formData.fMoney)) ? 0 : Number(formData.fMoney)
+                        }
+                        ,
+                        {
+                            ParmName: "@fRemit",
+                            Value: isNaN(Number(formData.fRemit)) ? 0 : Number(formData.fRemit)
+                        }
+                        ,
+                        {
+                            ParmName: "@sBank",
+                            Value: formData.sBank
+                        }
+                        ,
+                        {
+                            ParmName: "@sUserID",
+                            Value: pageMobile.userid
+                        }
+                    ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                    if (result != "1") {
+                        showMessage("出错", result);
+                    }
+                    else {
+                        window.location.href = "ShopOrderPrint.htm?iRecNo=" + pageMobile.key + "&card=" + $("#Text24").numberbox("getValue") + "&money=" + $("#Text25").numberbox("getValue") + "&hk=" + $("#Text26").numberbox("getValue") + "&r=" + Math.random();
+                    }
+                }
+            })
+        }
+
+        function doPrint() {
+            window.location.href = "ShopOrderPrint.htm?iRecNo=" + pageMobile.key + "&card=" + $("#Text24").numberbox("getValue") + "&money=" + $("#Text25").numberbox("getValue") + "&hk=" + $("#Text26").numberbox("getValue") + "&r=" + Math.random();
+        }
+    </script>
+</head>
+<body>
+    <div id="divContent" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" style="width:50px" onclick="pageMobile.backToList()">列表</a>                    
+                    <!--<a id="ptitle" href="javascript:void(0)" class="easyui-linkbutton" plain="true" style=" font-weight:bold;"></a>-->
+                </div>
+                <div class="m-right" id="toolbar">
+                    <a id="btnDelete" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-remove',plain:true" onclick="pageMobile.removef()">删除</a>
+                    <a id="btnDetail" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-document',plain:true" onclick="pageMobile.showDetail()">明细</a>
+                    <a id="btnSubmit" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-submit',plain:true" onclick="pageMobile.submit()">提交</a>
+                    <a id="btnSaveAndContine" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true" onclick="pageMobile.save(1)">保存并继续</a>
+                    <a id="btnSave" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true" onclick="pageMobile.save(0)">保存</a>
+                </div>
+            </div>
+        </header>
+        <!--以下是页面字段内容，
+        form1是主表，form2是子表，这是固定的，如果没有子表，就不要form2，
+        一个字段一行，左边是标题，右边是输入框，一个li表示一行-->
+        <form id="form1" method="post">
+        <div style="display: none;">
+            <input id="Text23" name="sOrderNo" type="hidden" />
+            <input id="Hidden1" name="sSizeGroupName" type="hidden" />
+        </div>
+        <ul class="m-list">
+            <li class="m-list-group">基本信息</li>
+            <li>
+                <!--字段标题的位置-->
+                门店
+                <div class="m-right">
+                    <!--字段输入框的位置，只要用input text控件，必须要有id、name，name是字段;
+                    fieldType表示类型，默认为字符，有字符、整数、数据、日期、时间、逻辑、备注;
+                    decimalNum表示小数位数，只有fieldtype为数据时有效;
+                    isReadonly="true"表示只读；
+                    defaultVal默认值，可以在后台定义；
+                    isRequied="true"表示必填，可以在后台定义;
+                    -->
+                    <input id="Text2" name="ibscDataStockMRecNo" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                客户
+                <div class="m-right">
+                    <input id="Text1" name="ibscDataCustomerRecNo" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <!--<li>下单日期
+                <div class="m-right">
+                    <input id="Text2" name="dDate" fieldtype="日期" isrequied="true" is type="text" />
+                </div>
+            </li>-->
+            <li>交期
+                <div class="m-right">
+                    <input id="Text3" name="dOrderDate" fieldtype="日期" isrequied="true" type="text" />
+                </div>
+            </li>
+            <li>商标
+                <div class="m-right">
+                    <input id="Text4" name="sLogon" fieldtype="字符" type="text" />
+                </div>
+            </li>
+            <li>尺码组
+                <div class="m-right">
+                    <input id="Text5" name="sSizeGroupID" isrequied="true" type="text" />
+                </div>
+            </li>
+            <li>备注
+                <div class="m-right">
+                    <input id="Text6" name="sRemark" fieldtype="备注" type="text" />
+                </div>
+            </li>
+            <li>制单人
+                <div class="m-right">
+                    <input id="Text7" name="sUserID" isreadonly="true" type="text" />
+                </div>
+            </li>
+            <li>制单时间
+                <div class="m-right">
+                    <input id="Text8" name="dInputDate" isreadonly="true" type="text" />
+                </div>
+            </li>
+            <li class="m-list-group">客户收货信息</li>
+            <li>
+                <!--字段标题的位置-->
+                运输方式
+                <div class="m-right">
+                    <input id="Text9" name="sTransType" fieldtype="备注" disabled="disabled" type="text" />
+                </div>
+            </li>
+            <li>包装方式
+                <div class="m-right">
+                    <input id="Text10" name="sPackageType" fieldtype="备注" disabled="disabled" is type="text" />
+                </div>
+            </li>
+            <li>收货人
+                <div class="m-right">
+                    <input id="Text17" name="sPerson" fieldtype="字符" disabled="disabled" type="text" />
+                </div>
+            </li>
+            <li>联系电话
+                <div class="m-right">
+                    <input id="Text21" name="sPersonTel" fieldtype="字符" disabled="disabled" type="text" />
+                </div>
+            </li>
+            <li>收货地址
+                <div class="m-right">
+                    <input id="Text22" name="sAddress" fieldtype="备注" disabled="disabled" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+        <form id="form2" method="post">
+        <ul class="m-list">
+            <li>
+                <!--字段标题的位置-->
+                序号
+                <div class="m-right">
+                    <!--字段输入框的位置，只要用input text控件，必须要有id、name，name是字段;
+                    fieldType表示类型，默认为字符，有字符、整数、数据、日期、时间、逻辑、备注;
+                    decimalNum表示小数位数，只有fieldtype为数据时有效;
+                    isReadonly="true"表示只读；
+                    defaultVal默认值，可以在后台定义；
+                    isRequied="true"表示必填，可以在后台定义;
+                    -->
+                    <input id="Text11" name="iSerial" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>款号
+                <div class="m-right">
+                    <input id="Text12" name="ibscDataStyleMRecNo" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>颜色
+                <div class="m-right">
+                    <input id="Text13" name="ibscDataColorRecNo" type="text" />
+                </div>
+            </li>
+            <li>单价
+                <div class="m-right">
+                    <input id="Text15" name="fPrice" fieldtype="数据" decimalnum="2" type="text" />
+                </div>
+            </li>
+            <li><a href="javascript:void(0)" onclick="openSizeDetail()">尺码明细</a> </li>
+            <li>数量
+                <div class="m-right">
+                    <input id="Text16" name="iSumQty" fieldtype="整数" type="text" />
+                </div>
+            </li>
+            <li>金额
+                <div class="m-right">
+                    <input id="Text19" name="fTotal" fieldtype="数据" decimalnum="2" disabled="disabled"
+                        type="text" />
+                </div>
+            </li>
+            <li>交期
+                <div class="m-right">
+                    <input id="Text14" name="dDeliveryDate" fieldtype="日期" type="text" />
+                </div>
+            </li>
+            <li>备注
+                <div class="m-right">
+                    <input id="Text18" name="sRemark" fieldtype="备注" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+    </div>
+    <div id="divLookUpList" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="lookUpMobile.reset();$.mobile.back();">退回</a>
+                </div>
+                <div id="divLookUpTitle" class="m-title"></div>
+                <div class="m-right">
+                    <a id="btnLookUpSearch" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-search',plain:true" onclick="lookUpMobile.showCondition()">查询</a>
+                </div>
+            </div>
+        </header>
+        <div id="divLookUpResultList">
+        </div>
+    </div>
+    <div id="divLookUpSearch" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back();">退回</a>
+                </div>
+                <div id="div2" class="m-title">查询条件</div>
+                <div class="m-right">
+                    <a id="btnLookUpSearchClear" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true" onclick="lookUpMobile.conditionClear()">清空</a>
+                    <a id="btnLookUpSearchFinish" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true" onclick="lookUpMobile.search()">完成</a>
+                </div>
+            </div>
+        </header>
+        <form id="formLookUpCondition">
+        <ul id="ulLookUpSearch" class="m-list">
+        </ul>
+        </form>
+    </div>
+    <div id="divSize" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back();">退回</a>
+                </div>
+                <div id="div1" class="m-title">尺码明细</div>
+                <div class="m-right">
+                    <a id="A1" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true" onclick="clearVal()">清空</a>
+                    <a id="A2" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true" onclick="sizeFinish()">完成</a>
+                </div>
+            </div>
+        </header>
+        <form id="form3">
+        <ul id="ulSizeDetail" class="m-list">
+        </ul>
+        </form>
+    </div>
+    <div id="divSubmit" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left" style="vertical-align:middle;">
+                    <a href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back();">回退</a>
+                </div>
+                <div id="div3" class="m-title">订单提交</div>
+                <div class="m-right">
+                    <!--<a id="A3" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-print',plain:true" onclick="doPrint()">打印</a>-->&nbsp;&nbsp;
+                    <a id="A4" href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true" onclick="doSubmit()">确认提交并打印</a>
+                </div>
+            </div>
+        </header>
+        <form id="form4">
+        <ul id="ul1" class="m-list">
+            <li>
+                <!--字段标题的位置-->
+                总金额：
+                <div class="m-right">
+                    <input id="Text20" name="fTotal" class="easyui-numberbox" data-options="disabled:true,precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                卡支付：
+                <div class="m-right">
+                    <input id="Text24" name="fCard" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                现金：
+                <div class="m-right">
+                    <input id="Text25" name="fMoney" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                汇款：
+                <div class="m-right">
+                    <input id="Text26" name="fRemit" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                汇款银行
+                <div class="m-right">
+                    <input id="Text27" name="sBank" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+    </div>
+</body>
+</html>

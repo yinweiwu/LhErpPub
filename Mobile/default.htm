@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>首页</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        $(function () {
+            getCurtUserID();
+            $("#spanUserName").html(userid);
+            //获取用户报表权限
+            $.post("Handler/MobileReportHandler.ashx", { otype: "GetReportMenu" },
+            function (obj) {
+                if (obj.success == true) {
+                    var data = obj.tables[0];
+                    for (var i = 0; i < data.length; i++) {
+                        if (i % 2 == 0) {
+                            var trNew = $("<tr></tr>");
+                            var tdNew = $("<td></td>");
+                            var btnNew = $("<a href=\"javascript:void(0)\" class=\"easyui-linkbutton\" data-options=\"iconCls:'icon-large-smartart',iconAlign:'top',size:'large'\" style=\"width: 100px; height: 80px;\" onclick=\"toReportMenu(" + data[i].iMenuID + ",'" + data[i].sMenuName + "')\">" + data[i].sMenuName + "</a>");
+                            $(tdNew).append(btnNew);
+                            $(trNew).append(tdNew);
+                            $("#tableTool").append(trNew);
+                        }
+                        else {
+                            var trLast = $("#tableTool tr:last-child");
+                            var tdNew = $("<td></td>");
+                            var btnNew = $("<a href=\"javascript:void(0)\" class=\"easyui-linkbutton\" data-options=\"iconCls:'icon-large-smartart',iconAlign:'top',size:'large'\" style=\"width: 100px; height: 80px;\" onclick=\"toReportMenu(" + data[i].iMenuID + ",'" + data[i].sMenuName + "')\">" + data[i].sMenuName + "</a>");
+                            $(tdNew).append(btnNew);
+                            $(trLast).append(tdNew);
+                        }
+                    }
+                    $.parser.parse('#divTool');
+                }
+                else {
+                    showMessage("获取报表菜单时出错", obj.message);
+                }
+            }, "json"
+            );
+
+            //获取未读数
+            $.post("Handler/MobileCheckHandler.ashx", { otype: "GetNoCheckCount" },
+            function (obj) {
+                if (obj.success == true) {
+                    if (obj.message != "0") {
+                        $("#spanNoDoCount").html(obj.message);
+                    }
+                    else {
+                        $("#spanNoDoCount").hide();
+                    }
+                }
+                else {
+                    //showMessage("获取报表菜单时出错", obj.message);
+                }
+            }, "json"
+            );
+        })
+
+        function toCheckList() {
+            window.location.href = "checkList.htm?r=" + Math.random();
+        }
+
+        function toTgList() {
+            window.location.href = "workList.htm?r=" + Math.random();
+            //doSearch(true);
+        }
+
+        function toReportMenu(parentMenuID, parentMenuName) {
+            window.location.href = "reportMenu.htm?parentMenuID=" + parentMenuID + "&parentMenuName=" + escape(parentMenuName) + "&r=" + Math.random();
+        }
+
+        function toUserCenter() {
+            $.mobile.go("#divUserCenter");
+        }
+        function loginOut() {
+            if (confirm("确认注销？")) {
+                $.post("/ashx/LoginOut.ashx", {}, function () { }, "string");
+                window.location.href = "loginMobile.htm?r=" + Math.random();
+                //                var url = "ashx/LoginOut.ashx";
+                //                var parms = "";
+                //                var async = false;
+                //                var ispost = false;
+                //                callpostback(url, parms, async, ispost);
+                //                window.location.href = "login.htm";
+            }
+        }
+
+        function getCurtUserID() {
+            $.ajax(
+                {
+                    url: "../ashx/LoginHandler.ashx",
+                    type: "post",
+                    cache: false,
+                    async: false,
+                    data: { otype: "getcurtuserid" },
+                    success: function (data) {
+                        userid = data;
+                    }
+                }
+            )
+        }
+        function showMessage(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">                
+                <div class="m-title">首页</div>
+                <div class="m-right">
+                    <a id="btn" href="javascript:void(0)" class="easyui-linkbutton" plain="true" outline="true" data-options="iconCls:'icon-man'" onclick="toUserCenter()"></a>
+                </div>
+            </div>
+        </header>
+        <div id="divTool" style="text-align: center; padding-top: 25px;">
+            <table cellspacing="5" id="tableTool" style="margin: auto; width: 100%; text-align: center;">
+                <tr>
+                    <td>
+                        <a href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:'icon-large-clipart',iconAlign:'top',size:'large'"
+                            style="width: 100px; height: 80px;" onclick="toCheckList()">待办事项<span class="m-badge" id="spanNoDoCount">0</span></a>
+                    </td>
+                    <td>
+                        <a href="javascript:void(0)" class="easyui-linkbutton" onclick="toTgList()" data-options="iconCls:'icon-large-shapes',iconAlign:'top',size:'large'"
+                            style="width: 100px; height: 80px;">常用工作</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="divUserCenter" class="easyui-navpanel">
+        <header>
+            <div class="m-toolbar">
+                <div class="m-left">
+                    <a id="A2" href="javascript:void(0)" class="easyui-linkbutton m-back" plain="true" outline="true" style="width:50px" onclick="$.mobile.back()">回退</a>
+                </div>
+                <div class="m-title">用户中心</div>
+                <div class="m-right">
+                    <a id="A1" href="javascript:void(0)" class="easyui-linkbutton" plain="true" outline="true" data-options="iconCls:'icon-logout'" onclick="loginOut()">注销</a>
+                </div>
+            </div>
+        </header>
+        <ul class="m-list">
+            <li>用户名
+                <div class="m-right">
+                    <span id="spanUserName" class="color:blue"></span>
+                </div>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

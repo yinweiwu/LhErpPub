@@ -1,0 +1,218 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>信息管理系统-首页</title>
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!--<script src="/static/common/loginCheck.js"></script>-->
+    <link rel="shortcut icon" href="/static/image/system.ico" type="image/x-icon">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui1.7.3/themes/material/easyui.css">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui1.7.3/themes/icon.css?r=1">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui1.7.3/themes/color.css">
+    <script type="text/javascript" src="/Base/JS/easyui1.7.3/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui1.7.3/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui1.7.3/locale/easyui-lang-zh_CN.js" charset="utf-8"></script>
+    <link rel="stylesheet" type="text/css" href="/static/common/common.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/index.css">
+    <script type="text/javascript" src="/static/common/dateHelper.js" charset="utf-8"></script>
+    <script type="text/javascript" src="/static/common/jsHelper.js" charset="utf-8"></script>
+    <script type="text/javascript" src="/static/js/index.js" charset="utf-8"></script>
+    <!--<script src="/lib/@aspnet/signalr/dist/browser/signalr.js" charset="utf-8"></script>
+    <script src="/static/js/indexrtc.js" charset="utf-8"></script>
+    <script src="https://cdn.bootcss.com/signalr.js/2.4.0/jquery.signalR.min.js"></script>
+    <script src="/static/js/shutcut.js"></script>-->
+    <script type="text/javascript">
+
+    </script>
+    <style type="text/css">
+        .l-btn-text {
+            color: #ffffff;
+            /*background-color: #2d3e50;*/
+        }
+
+        .m-btn-plain-active .l-btn-text {
+            color: black;
+        }
+
+        .tabs-header {
+            border-bottom: none;
+        }
+
+        .pwdBtn span {
+            color: black;
+        }
+
+        #tabShutcut {
+            border: none;
+            margin-top: 10px;
+        }
+
+            #tabShutcut tr td {
+                border: none;
+                text-align: center;
+            }
+
+            #tabShutcut .l-btn-text {
+                color: black;
+            }
+    </style>
+</head>
+<body id="theBody" class="easyui-layout" data-options="border:false">
+    <div data-options="region:'north',border:false" style="height: 50px; vertical-align:middle;background-color: #2d3e50; overflow: hidden;">
+        <table style="width:100%;">
+            <tr>
+                <td td="tdLog" style=" padding-left:10px; padding-top:5px; vertical-align:middle;width:230px;color:white;font-family:'Microsoft YaHei';font-size:18px;"><!--background-image:url('/static/image/logo.png');background-position: 20% center;background-repeat: no-repeat;-->
+                    <!--<input id="hidUserCode" type="hidden">-->
+                    <img src="images/info.png" style="height:35px; vertical-align:middle;" />信息管理系统
+                </td>
+                <td style="padding-top: 5px;">
+                    <table id="tabTopMenu" class="tableTopButton">
+                        <tr>
+                        </tr>
+                    </table>
+                </td>
+                <td td="tdUser" style="width:220px;text-align: right;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td>
+                                <a id="btnUserName" href="#" class="easyui-menubutton" data-options="plain:true,iconCls:'icon-user',menu:'#divUserMenu'"></a>
+                            </td>
+                            <td style="text-align: right;padding-right: 10px;">
+                                <a href="#" class="easyui-linkbutton" data-options="plain:true,iconCls:'icon-exit'" onclick="signout()">退出</a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div data-options="region:'west',border:true,split:true,title:'用户菜单',tools:[{iconCls:'icon-reload',handler:reloadMenu}]" style="width:220px;">
+        <input id="hidMenuData" type="hidden">
+        <div id="divMenu" style="margin-left: 10px; margin-top: 8px; width: 200px;">
+        </div>
+    </div>
+    <div data-options="region:'center',border:true">
+        <div id="divTab" class="easyui-tabs" data-options="fit:true,border:false,onContextMenu:showTabMenu">
+            <div title="首页" style="padding:5px;">
+                <table style="width:99%;height:99%;" cellpadding="3">
+                    <tr>
+                        <td style="width:50%; height:50%;">
+                            <div id="divShutcut" class="easyui-panel" style="width: 100%;height: 100%;" data-options="iconCls:'icon-shortcut',title:'快捷入口',collapsible:false,minimizable:false,
+                                 maximizable:false,closable:false,tools:[{
+					                iconCls:'icon-download',
+					                handler:function(){ CASysShutcut.downloadMyExplorer(); }
+				                 }]">
+                                <table id="tabShutcut" style="width:100%;">
+                                </table>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="easyui-panel" style="width:100%;height:100%;"
+                                 data-options="iconCls:'icon-todo',title:'待办事项',collapsible:false,minimizable:false,maximizable:false,closable:false">
+                                <table id="tabTodo" class="easyui-datagrid"
+                                       data-options="fit:true,border:false,showHeader:false,
+                                   tools:[
+				                    {
+					                    iconCls:'icon-add',
+					                    handler:function(){ addNew(); }
+				                    }]">
+                                    <thead>
+                                        <tr>
+                                            <th data-options="field:'Title',align:'left'" style="">标题</th>
+                                            <th data-options="field:'SendTime',align:'center'" style="width:150px;">时间</th>
+                                            <th data-options="field:'handler',width:100,align:'center',
+                                                formatter:function(value,row,index){
+                                                return '<a href=# onclick=messageHand('+index+')>处理</a>';}">处理</th>
+                                            <th data-options="field:'Id',width:100,hidden:true">Id</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width:50%; height:50%;">
+                            <div class="easyui-panel" style="width: 100%; height: 100%;"
+                                 data-options="iconCls:'icon-notice',title:'公告',collapsible:false,minimizable:false,maximizable:false,closable:false">
+
+                            </div>
+
+                        </td>
+                        <td>
+                            <div class="easyui-panel" style="width:100%;height:100%;"
+                                 data-options="iconCls:'icon-analytics',title:'数据分析',collapsible:false,minimizable:false,maximizable:false,closable:false">
+                            </div>
+
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="divChangePwd" class="easyui-window" data-options="title:'修改密码',closed:true,modal:true,resizable:true,collapsible:false,minimizable:false,maximizable:false"
+         style="width:350px;height:180px;">
+        <form id="formChangePwd">
+            <table style="margin:auto; text-align:center;">
+                <tr>
+                    <td>
+                        当前密码
+                    </td>
+                    <td>
+                        <input id="txtPassword1" class="easyui-passwordbox" name="curpwd" data-options="required:false" style="width:200px">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        新密码
+                    </td>
+                    <td>
+                        <input id="txtPassword2" class="easyui-passwordbox" name="newpwd" data-options="required:true" style="width:200px">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        确认密码
+                    </td>
+                    <td>
+                        <input id="txtPassword3" class="easyui-passwordbox" name="compwd" data-options="required:true" style="width:200px">
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align:center;">
+                        <a id="btnPwdCon" href="#" class="easyui-linkbutton pwdBtn" data-options="iconCls:'icon-ok'" onclick="changepwd()" style="color:black">确定</a>
+                        &nbsp;&nbsp;
+                        <a href="#" class="easyui-linkbutton pwdBtn" data-options="iconCls:'icon-exit'" onclick="$('#divChangePwd').window('close')" style="color:black">取消</a>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="divUserMenu">
+        <div data-options="iconCls:'icon-lock'" onclick="$('#divChangePwd').window('open');">修改密码</div>
+    </div>
+    <div id="mm" class="easyui-menu" data-options="onClick:tabMenuClick" style="width: 120px; display: none;">
+        <div id="mm-tabclose" name="6">
+            刷新
+        </div>
+        <div id="Div1" name="1">
+            关闭
+        </div>
+        <div id="mm-tabcloseall" name="2">
+            全部关闭
+        </div>
+        <div id="mm-tabcloseother" name="3">
+            除此之外全部关闭
+        </div>
+        <div class="menu-sep">
+        </div>
+        <div id="mm-tabcloseright" name="4">
+            当前页右侧全部关闭
+        </div>
+        <div id="mm-tabcloseleft" name="5">
+            当前页左侧全部关闭
+        </div>
+    </div>
+</body>
+</html>

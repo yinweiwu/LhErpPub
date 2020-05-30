@@ -1,0 +1,1418 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>生产称重入库</title>
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link href="/Base/JS/easyui/themes/default/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <!--<script type="text/javascript" src="mscomm32/JScript.js"></script>-->
+    <script id="clientEventHandlersJS" language="javascript">
+        //重写mscomm控件的唯一事件处理代码
+        var orText = "";
+        var fLastWeight = 0;
+        function MSComm1_OnComm() {
+            var len = 0;
+            //window.alert("happy");  
+            if (MSComm1.CommEvent == 1)//如果是发送事件   
+            {
+                window.alert("发送成功！"); //这句正常，说明发送成功了   
+            }
+            else if (MSComm1.CommEvent == 2)//如果是接收事件   
+            {
+                if (orText.length < 30) {
+                    orText += MSComm1.Input;
+                }
+                else {
+                    var arr = orText.split("ST,NT,+  ");
+                    try {
+                        var sTheWeightFull = arr[1];
+                        var index = sTheWeightFull.indexOf("kg");
+                        if (index > -1) {
+                            var sWeight = sTheWeightFull.substr(0, index);
+                            if (!isNaN(parseFloat(sWeight))) {
+                                var fWeight = parseFloat(sWeight);
+                                if (fWeight != fLastWeight) {
+                                    $("#txbWeight").numberbox("setValue", fWeight);
+                                    //$('Textarea1').value = fWeight;
+                                    fLastWeight = fWeight;
+                                }
+                            }
+                        }
+                    }
+                    catch (e) {
+
+                    }
+                    orText = "";
+                }
+
+            }
+
+            return false;
+        }   
+    </script>
+    <script language="javascript" for="MSComm1" event="OnComm">   
+  <!--
+  // MSComm1控件每遇到OnComm事件就调用MSComm1_OnComm()函数
+          MSComm1_OnComm()
+   //-->   
+    </script>
+    <script language="vbscript" type="text/vbscript" src="mscomm32/VBScript.vbs"></script>
+    <script src="/Base/JS/JSCookie.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+                alert("获取当前用户失败，无法操作！");
+            }
+        });
+        var isPortOpen = false;
+        $(function () {
+            if (userid != "master" && userid != "8888") {
+                $("#btnSetPort").hide();
+            }
+            $.messager.progress({ title: "正在打开称重机，请稍候..." });
+            $("#tableSdOrderMPro").datagrid(
+                {
+                    fit: true,
+                    title: "生产单",
+                    border: false,
+                    rowStyler: function (index, row) {
+                        return "height:40px;";
+                    },
+                    checkOnSelect: false,
+                    columns: [
+                        [
+                            { field: "_cb", width: 40, checkbox: true, align: "center" },
+                            { field: "sProDateStr", title: "下单日期", width: 130, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                    /*{ field: "sProOrderNo", title: "生产单号", width: 100, sortable: true, styler: function () {
+                    return "font-size:18px;font-weight:bold;";
+                    }
+                    },*/
+                             {field: "sOrderNo", title: "订单号", width: 160, sortable: true, styler: function () {
+                                 return "font-size:20px;font-weight:bold;";
+                             }
+                         },
+                            { field: "sBscDataFabCode", title: "坯布编号", width: 100, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "sBscDataFabName", title: "坯布名称", width: 100, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "fProductWidth", title: "幅宽", width: 80, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            { field: "fProductWeight", title: "克重", width: 80, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sModelType", title: "规格", width: 120, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "sMatUseSimple", title: "纱线成份", width: 160, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "fProduceQty", title: "计划生产量", width: 120, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            {
+                                field: "fReadyProduceQty", title: "已生产重量", width: 120, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            { field: "iPurQty", title: "已生产卷数", width: 120, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            {
+                                field: "fNotProduceQty", title: "未生产量", width: 100, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;";
+                            }
+                            },
+                            { field: "iPlanCount", title: "要求生产匹数", width: 120, sortable: true, styler: function () {
+                                return "font-size:20px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "iBscDataMatFabRecNo", title: "", width: 100, sortable: true, hidden: true },
+                            { field: "iSdOrderMRecNo", hidden: true }
+                        ]
+                    ],
+                    remoteSort: false,
+                    //toolbar: "#tb",
+                    rownumbers: true,
+                    singleSelect: true,
+                    onDblClickRow: function (index, row) {
+                        $("#tableSdOrderMPro").datagrid("checkRow", index);
+                        /*var sMachineID = $("#txbMachine").combobox("getValue");
+                        $("#form1").form("load", row);
+                        var iSdOrderMRecNo = row.iSdOrderMRecNo;
+                        var jsonobj = {
+                        StoreProName: "SpMachineLastSdOrderMRecNo",
+                        StoreParms: [
+                        {
+                        ParmName: "@sMachineCode",
+                        Value: sMachineID
+                        },
+                        {
+                        ParmName: "@iLastSdOrderMRecNo",
+                        Value: iSdOrderMRecNo
+                        }
+                        ]
+                        }
+                        var result = SqlStoreProce(jsonobj);*/
+                    },
+                    onCheck: function (index, row) {
+                        var sMachineID = $("#txbMachine").combobox("getValue");
+                        $("#form1").form("load", row);
+                        var iSdOrderMRecNo = row.iSdOrderMRecNo;
+                        var jsonobj = {
+                            StoreProName: "SpMachineLastSdOrderMRecNo",
+                            StoreParms: [
+                            {
+                                ParmName: "@sMachineCode",
+                                Value: sMachineID
+                            },
+                            {
+                                ParmName: "@iLastSdOrderMRecNo",
+                                Value: iSdOrderMRecNo
+                            }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                    }
+                }
+            );
+            $("#tableTodayYield").datagrid(
+                {
+                    fit: true,
+                    title: "当天产量",
+                    border: false,
+                    showFooter: true,
+                    rowStyler: function (index, row) {
+                        return "height:40px;";
+                    },
+                    columns: [
+                        [
+                    /*{ field: "sProOrderNo", title: "生产单号", width: 100, sortable: true },*/
+                            {field: "sOrderNo", title: "订单号", width: 160, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                        },
+                            { field: "sUserID", title: "工号", width: 80, sortable: true, hidden: true },
+                            {
+                                field: "sPersonName", title: "姓名", width: 80, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sInputDate", title: "称重时间", width: 130, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            {
+                                field: "sBscDataFabCode", title: "坯布编号", width: 120, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;color:red;";
+                            }
+                            },
+                            {
+                                field: "sBscDataFabName", title: "坯布名称", width: 120, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "fProductWidth", title: "幅宽", width: 60, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "fProductWeight", title: "克重", width: 60, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            //{ field: "sModelType", title: "纱线成份", width: 120, sortable: true, styler: function () {
+                            //    return "font-size:18px;font-weight:bold;color:red;";
+                            //}
+                            //},
+                            { field: "sMatUseSimple", title: "机型", width: 120, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;color:red;";
+                            }
+                            },
+                            { field: "sClasses", title: "班次", width: 60, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sMachineCode", title: "机台", width: 60, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sBarcode", title: "条码", width: 133, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sReelNo", title: "卷号", width: 60, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "sRemark", title: "批号", width: 100, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "fWeight", title: "重量", width: 80, sortable: true, styler: function () {
+                                return "font-size:18px;font-weight:bold;";
+                            }
+                            },
+                            { field: "__cancel", title: "撤销", width: 60, align: "center", formatter: function (value, row, index) {
+                                if (row.iRecNo) {
+                                    return "<input type='button' value='撤销' onclick='doCancel(" + index + ")' />";
+                                }
+                            }
+                            },
+                            { field: "iRecNo", title: "", width: 80, sortable: true, hidden: true },
+                            { field: "iSDOrderMRecNo", title: "", width: 80, sortable: true, hidden: true }
+                        ]
+                    ],
+                    remoteSort: false,
+                    rownumbers: true,
+                    singleSelect: true
+                }
+                );
+            //            searchSdOrderMPro();
+            $("#txbBarcode").focus();
+            //班次
+            var sqlObjClass = {
+                TableName: "bscDataListD",
+                Fields: "sCode,sName",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "=",
+                        Value: "'sWorkClass'"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "iSerial",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultClass = SqlGetData(sqlObjClass);
+            if (resultClass.length > 0) {
+                $("#txbClass").combobox("loadData", resultClass);
+            }
+
+            //机台
+            var sqlObjMachine = {
+                TableName: "bscDataMachine",
+                Fields: "sMachineCode,iLastSdOrderMRecNo,iRecNo",
+                SelectAll: "True",
+				Filters:[
+					{
+						Field:"sClassID",ComOprt:"like",Value:"'02%'"
+					}
+				],
+                Sorts: [
+                    {
+                        SortName: "iRecNo",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultMachine = SqlGetData(sqlObjMachine);
+            if (resultMachine.length > 0) {
+                $("#txbMachine").combobox("loadData", resultMachine);
+            }
+            //仓库
+            var sqlObjStockM = {
+                TableName: "bscDataStockM",
+                Fields: "iRecNo,sStockName",
+                SelectAll: "True",
+                Filters:[
+                    {
+                        Field: "sStockName",
+                        ComOprt: "like",
+                        Value:"'坯布%'"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "iRecNo",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultStock = SqlGetData(sqlObjStockM);
+            if (resultStock.length > 0) {
+                $("#txbBscDataStock").combobox("loadData", resultStock);
+                $("#txbBscDataStock").combobox("setValue", "181");
+            }
+            $($("#txbWeight").numberbox("textbox")).bind("keydown", function () {
+                if (event.keyCode == 13) {
+                    stockIn();
+                }
+            })
+            setReadOnly();
+
+            var objStr = "<object classid='clsid:648A5600-2C6E-101B-82B6-000000000014' id='MSComm1' codebase='MSCOMM32.OCX' type='application/x-oleobject' style='left: 54px; top: 14px'>";
+            var portCookie = getCookie("mscomm32_port");
+            if (portCookie != null) {
+                /*var prms = document.getElementById("MSComm1").getElementsByTagName("param");
+                for (var i = 0; i < prms.length; i++) {
+                if (prms[i].name == "CommPort") {
+                prms[i].value = portCookie;
+                break;
+                }
+                }*/
+                objStr += "<param name='CommPort' value='" + portCookie + "'>";
+            }
+            else {
+                objStr += "<param name='CommPort value='4'>";
+            }
+            objStr += "<param name='DTREnable' value='1'><param name='Handshaking' value='0'><param name='InBufferSize' value='1024'><param name='InputLen' value='0'><param name='NullDiscard' value='0'><param name='OutBufferSize' value='512'>" +
+        "<param name='ParityReplace' value='?'><param name='RThreshold' value='1'><param name='RTSEnable' value='1'><param name='SThreshold' value='2'><param name='EOFEnable' value='0'><param name='InputMode' value='0'>" +
+        "<param name='DataBits' value='8'><param name='StopBits' value='1'><param name='BaudRate' value='9600'><param name='Settings' value='9600,N,8,1'>";
+            var object = $(objStr);
+            $("body").append(object);
+            //            var portCookie = getCookie("mscomm32_port");
+            //            if (portCookie != null) {
+            //                var prms = document.getElementById("MSComm1").getElementsByTagName("param");
+            //                for (var i = 0; i < prms.length; i++) {
+            //                    if (prms[i].name == "CommPort") {
+            //                        prms[i].value = portCookie;
+            //                        break;
+            //                    }
+            //                }
+            //            }
+            setTimeout(function () {
+                try {
+                    OpenPort();
+                    $.messager.progress("close");
+                }
+                catch (e) {
+                    alert("称重机打开失败！");
+                    $.messager.progress("close");
+                }
+            }, 1000);
+            setTimeout(function () {
+                if (isPortOpen == false) {
+                    alert("称重机打开失败！");
+                }
+            }, 2000);
+        });
+
+        function setReadOnly() {
+            $($("#Text1").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text2").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text3").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text4").textbox("textbox")).addClass("txbreadonlyRed");
+            $($("#Text5").textbox("textbox")).addClass("txbreadonlyRed");
+            $($("#Text6").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text7").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text10").textbox("textbox")).addClass("txbreadonlyRed");
+            $($("#Text11").textbox("textbox")).addClass("txbreadonlyRed");
+        }
+
+        function stockIn() {
+            var txbClasses = $("#txbClass").textbox("getValue");
+            var txbMachine = $("#txbMachine").combobox("getValue");
+            var txbWeight = $("#txbWeight").numberbox("getValue");
+            var iSdOrderMRecNo = $("#iSdOrderMRecNo").val();
+            var sCode = $("#Text6").textbox("getValue");
+            var iBscDataMatRecNo = $("#iBscDataMatFabRecNo").val();
+            var iBscDataStockMRecNo = $("#txbBscDataStock").combobox("getValue");
+            var iBscDataStockDRecNo = $("#txbBscDataStockD").textbox("getValue");
+            var sBatchNo = $("#Text12").textbox("getValue");
+            iBscDataStockDRecNo = iBscDataStockDRecNo == "" || iBscDataStockDRecNo == null || iBscDataStockDRecNo == undefined ? 0 : iBscDataStockDRecNo;
+            var allRow = $("#tableSdOrderMPro").datagrid("getChecked");
+            if (allRow.length == 0) {
+                alert("请选择订单！"); return false;
+            }
+            if (txbClasses == "") {
+                alert("请选择班次！"); return false;
+            }
+            if (txbMachine == "") {
+                alert("请选择机台！"); return false;
+            }
+            if (txbWeight == "") {
+                alert("请输入重量！"); return false;
+            }
+            if (txbWeight<=0) {
+                alert("重量不能为0！"); return false;
+            }
+            if (iSdOrderMRecNo == "") {
+                alert("请扫描或者选择生产单！"); return false;
+            }
+            if (sCode == "") {
+                alert("请扫描工号！"); return false;
+            }
+            if (iBscDataStockMRecNo == "") {
+                alert("请选择仓库！"); return false;
+            }
+
+            var doIn = function () {
+                var jsonobj = {
+                    StoreProName: "SpProWeightStockIn",
+                    StoreParms: [
+                    {
+                        ParmName: "@iSdOrderMRecNo",
+                        Value: iSdOrderMRecNo
+                    },
+                    {
+                        ParmName: "@sClassesID",
+                        Value: txbClasses
+                    },
+                    {
+                        ParmName: "@sMachineID",
+                        Value: txbMachine
+                    },
+                    {
+                        ParmName: "@fWeight",
+                        Value: txbWeight
+                    },
+                    {
+                        ParmName: "@sUserID",
+                        Value: sCode
+                    },
+                    {
+                        ParmName: "@iBscDataStockMRecNo",
+                        Value: iBscDataStockMRecNo
+                    },
+                    {
+                        ParmName: "@iBscDataStockDRecNo",
+                        Value: iBscDataStockDRecNo
+                    },
+                    {
+                        ParmName: "@iBscDataMatRecNo",
+                        Value: iBscDataMatRecNo
+                    },
+                    {
+                        ParmName: "@sBatchNo",
+                        Value: sBatchNo
+                    }
+                    ]
+                }
+                var result = SqlStoreProce(jsonobj);
+                if (result[0] != "1") {
+                    alert(result.substr(2));
+                }
+                else {
+                    /*var dhIndexStart = result.indexOf(",");
+                    var dhIndexEnd = result.lastIndexOf(",");
+                    var iRecNoM = result.substr(2, dhIndexStart - 2);
+                    var iRecNo = result.substr(dhIndexStart + 1, dhIndexEnd - dhIndexStart - 1);
+                    var sbarcode = result.substr(dhIndexEnd + 1, result.length - dhIndexEnd - 1);*/
+                    var resultRe = result.substr(2, result.length - 2);
+                    var resultArr = resultRe.split(',');
+                    var iProWeightRecordRecNo = resultArr[0];
+                    var sbarcode = resultArr[1];
+                    var sReelNo = resultArr[2];
+                    //增加当天产量1:111,2222
+                    var appRow = {
+                        iRecNo: iProWeightRecordRecNo,
+                        iSDOrderMRecNo: iSdOrderMRecNo,
+                        sProOrderNo: $("#Text1").textbox("getValue"),
+                        sOrderNo: $("#Text2").textbox("getValue"),
+                        sUserID: $("#Text6").val(),
+                        sPersonName: $("#Text7").val(),
+                        sInputDate: getNowDate() + " " + getNowTime(),
+                        sBscDataFabCode: $("#Text4").textbox("getValue"),
+                        sBscDataFabName: $("#Text5").textbox("getValue"),
+                        fProductWidth: $("#Text8").textbox("getValue"),
+                        fProductWeight: $("#Text9").textbox("getValue"),
+                        fWeight: $("#txbWeight").numberbox("getValue"),
+                        sClasses: $("#txbClass").textbox("getText"),
+                        sMachineCode: txbMachine,
+                        sBarcode: sbarcode,
+                        sModelType: $("#Text11").textbox("getValue"),
+                        sMatUseSimple: $("#Text10").textbox("getValue"),
+                        sReelNo: sReelNo,
+                        sRemark: sBatchNo
+                    }
+                    $("#tableTodayYield").datagrid("appendRow", appRow);
+                    var allRows = $("#tableTodayYield").datagrid("getRows");
+                    $("#tableTodayYield").datagrid("scrollTo", allRows.length - 1);
+                    $("#tableTodayYield").datagrid("selectRow", allRows.length - 1);
+                    $("#txbWeight").numberbox("setValue", "");
+                    var sumQty = 0.00;
+                    for (var i = 0; i < allRows.length; i++) {
+                        sumQty += Number(allRows[i].fQty);
+                    }
+                    sumQty = parseFloat(sumQty.toFixed(2));
+                    var footData = [{ fQty: sumQty, sBarCode: "卷数：" + allRows.length}];
+                    $("#tableTodayYield").datagrid("reloadFooter", footData);
+                    var allRowsOrder = $("#tableSdOrderMPro").datagrid("getRows");
+                    //for (var i = 0; i < allRowsOrder.length; i++) {
+                    //    if (allRowsOrder[i].iSdOrderMRecNo == iSdOrderMRecNo) {
+                    //        var fReadyProduceQty = isNaN(Number(allRowsOrder[i].fReadyProduceQty)) ? 0 : Number(allRowsOrder[i].fReadyProduceQty);
+                    //        var fNotProduceQty = isNaN(Number(allRowsOrder[i].fNotProduceQty)) ? 0 : Number(allRowsOrder[i].fNotProduceQty);
+                    //        var iPurQty = isNaN(Number(allRowsOrder[i].iPurQty)) ? 0 : Number(allRowsOrder[i].iPurQty);
+                    //        var fFabInQtySum = Number(fReadyProduceQty) + Number(txbWeight);
+                    //        var fFabNotInQtySum = Number(fNotProduceQty) - Number(txbWeight);
+                    //        fFabInQtySum = parseFloat(fFabInQtySum.toFixed(2));
+                    //        var iPurQtySum = iPurQty + 1;
+                    //        $("#tableSdOrderMPro").datagrid("updateRow", { index: i, row: { fReadyProduceQty: fFabInQtySum, iPurQty: iPurQtySum, fNotProduceQty: fFabNotInQtySum } });
+                    //        $('.datagrid-cell').css('font-size', '18px');
+                    //        break;
+                    //    }
+                    //}
+
+                    //var sMachineID = $("#txbMachine").combobox("getValue");
+                    //var sMachineCode = $("#txbMachine").combobox("getText");
+                    //var data = $("#txbMachine").combobox("getData");
+                    //var lastSdOrderMRecNo = 0;
+                    //$("#iSdOrderMRecNo").val("");
+                    var filters = [
+                        {
+                            Field: "sMachineID",
+                            ComOprt: "=",
+                            Value: "'" + txbMachine + "'",
+                            LinkOprt: "and"
+                        },
+                        {//批次订单中的iFabFinish，在成品销售订单列表里可以标记
+                            Field: "sFabFinish",
+                            ComOprt: "<>",
+                            Value: "'√'",
+                            LinkOprt: "and"
+                        }
+                        ,
+                        {//生成单中子表中的iFinish
+                            Field: "isnull(iFinish,0)",
+                            ComOprt: "<>",
+                            Value: "1",
+                            LinkOprt: "and"
+                        },
+                        {//生成单中子表中的iFinish
+                            Field: "iSdOrderMRecNo",
+                            ComOprt: "=",
+                            Value: iSdOrderMRecNo
+                        }
+                    ];
+                    var sqlObjSDOrderM = {
+                        TableName: "vwSDOrderDMachineMD",
+                        Fields: "iRecNo,iBscDataMatFabRecNo,iSdOrderMRecNo,iLastSdOrderMRecNo,sProOrderNo,sOrderNo,convert(varchar(10),dProDate,23) as sProDateStr,sBscDataFabCode,sBscDataFabName,fProductWidth,fProductWeight,fProduceQty,fFabInQty,fFabNotInQty,sModelType,sMatUseSimple,iPurQty,iPlanCount,fReadyProduceQty,fNotProduceQty",
+                        SelectAll: "True",
+                        Filters: filters,
+                        Sorts: [
+                            {
+                                SortName: "dProDate",
+                                SortOrder: "asc"
+                            }
+                        ]
+                    }
+                    var resultSDOrderM = SqlGetData(sqlObjSDOrderM);
+                    if (resultSDOrderM.length > 0) {
+                        var checkedRow = $("#tableSdOrderMPro").datagrid("getChecked");
+                        var rowIndex = $("#tableSdOrderMPro").datagrid("getRowIndex", checkedRow[0]);
+
+                        $("#tableSdOrderMPro").datagrid("updateRow", { index: rowIndex, row: resultSDOrderM[0] });
+                    }
+                    var url = "/Base/PbPage.aspx?otype=print&iformid=89009&irecno=237&key=" + iProWeightRecordRecNo + "&r=" + Math.random();
+                    $("#ifrpb").attr("src", "");
+                    $("#ifrpb").attr("src", url);
+                    fLastWeight = 0;
+                    $("#Text12").textbox("setValue", "");
+                    $('.datagrid-cell').css('font-size', '18px');
+                }
+            }
+            var doBeforeIn = function () {
+                $("#Button1").attr("disabled", true);
+                var filters = [
+                {
+                    Field: "sMachineID",
+                    ComOprt: "=",
+                    Value: "'" + txbMachine + "'",
+                    LinkOprt: "and"
+                },
+                {
+                    Field: "iSdOrderMRecNo",
+                    ComOprt: "=",
+                    Value: iSdOrderMRecNo
+                }
+            ];
+                var sqlObjPlanCount = {
+                    TableName: "vwSDOrderDMachineMD",
+                    Fields: "max(iPlanCount) as c",
+                    SelectAll: "True",
+                    Filters: filters
+                }
+                var resultPlanCount = SqlGetData(sqlObjPlanCount);
+                if (resultPlanCount.length > 0) {
+                    var planCount = isNaN(parseInt(resultPlanCount[0].c)) ? 0 : parseInt(resultPlanCount[0].c);
+                    if (planCount > 0) {
+                        var sqlObjCount = {
+                            TableName: "ProWeightRecord",
+                            Fields: "count(*) as c",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "iSDOrderMRecNo",
+                                    ComOprt: "=",
+                                    Value: iSdOrderMRecNo,
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "sMachineID",
+                                    ComOprt: "=",
+                                    Value: "'" + txbMachine + "'"
+                                }
+                            ]
+                        }
+                        var resultCount = SqlGetData(sqlObjCount);
+                        if (resultCount.length > 0) {
+                            var count = isNaN(parseInt(resultCount[0].c)) ? 0 : parseInt(resultCount[0].c);
+                            if (count > 0 && count+1 >= planCount) {
+                                if (confirm("此机台要求生产匹数为【" + planCount + "】匹，已经生产【" + count + "】匹，已达接近/达到目标，确认继续称重吗？")) {
+                                    doIn();
+                                }
+                            }
+                            else {
+                                doIn();
+                            }
+                        }
+                    }
+                    else {
+                        doIn();
+                    }
+                }
+                setTimeout(function () {
+                    $("#Button1").attr("disabled", false);
+                }, 5000)
+            }
+            
+            var allOrderRows = $("#tableSdOrderMPro").datagrid("getRows");
+            if (allOrderRows.length > 1) {
+                $.messager.confirm("请确认坯布规格及成份", "<span style='color:red;font-size:16px;font-family: 微软雅黑;'>存在多条坯布，请确认所选择坯布与称重坯布是否匹配（规格、成份），如匹配请点击<确定>，否则请点击<取消>，重新选择正确的坯布后点击<确定></span>", function (r) {
+                    if (r) {
+                        doBeforeIn();
+                    }
+                })
+            }
+            else {
+                doBeforeIn();
+            }           
+
+        }
+        function searchSdOrderMPro() {
+            var sMachineID = $("#txbMachine").combobox("getValue");
+            var sMachineCode = $("#txbMachine").combobox("getText");
+            var data = $("#txbMachine").combobox("getData");
+            var lastSdOrderMRecNo = 0;
+            $("#iSdOrderMRecNo").val("");
+            var filters = [
+                {
+                    Field: "sMachineID",
+                    ComOprt: "=",
+                    Value: "'" + sMachineID + "'",
+                    LinkOprt: "and"
+                },
+                {//批次订单中的iFabFinish，在成品销售订单列表里可以标记
+                    Field: "sFabFinish",
+                    ComOprt: "<>",
+                    Value: "'√'",
+                    LinkOprt:"and"
+                }
+                ,
+                {//生成单中子表中的iFinish
+                    Field: "isnull(iFinish,0)",
+                    ComOprt: "<>",
+                    Value: "1"
+                }
+            ];
+            var sqlObj = {
+                TableName: "vwSDOrderDMachineMD",
+                Fields: "iRecNo,iBscDataMatFabRecNo,iSdOrderMRecNo,iLastSdOrderMRecNo,sProOrderNo,sOrderNo,convert(varchar(10),dProDate,23) as sProDateStr,sBscDataFabCode,sBscDataFabName,fProductWidth,fProductWeight,fProduceQty,fFabInQty,fFabNotInQty,sModelType,sMatUseSimple,iPurQty,iPlanCount,fReadyProduceQty,fNotProduceQty",
+                SelectAll: "True",
+                Filters: filters,
+                Sorts: [
+                    {
+                        SortName: "dProDate",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var result = SqlGetData(sqlObj);
+            if (result.length == 0) {
+                MessageShow(sMachineCode + "机台未安排订单！", "对不起，" + sMachineCode + "机台未安排订单");
+                var tip = $("#txtScanResult").val();
+                tip = tip == "" ? sMachineCode + "机台未安排订单" : tip + "\r\n" + sMachineCode + "机台未安排订单";
+                $("#txtScanResult").val(tip);
+            }
+            else {
+                lastSdOrderMRecNo = result[0].iLastSdOrderMRecNo == undefined || result[0].iLastSdOrderMRecNo == null || result[0].iLastSdOrderMRecNo == "" ? 0 : result[0].iLastSdOrderMRecNo;
+            }
+            $("#tableSdOrderMPro").datagrid("loadData", result);
+            var allRows = $("#tableSdOrderMPro").datagrid("getRows");
+            if (allRows.length > 0) {
+                var isExists = false;
+                if (lastSdOrderMRecNo != 0) {
+                    for (var i = 0; i < allRows.length; i++) {
+                        if (allRows[i].iSdOrderMRecNo == lastSdOrderMRecNo) {
+                            $("#tableSdOrderMPro").datagrid("checkRow", i);
+                            $("#form1").form("load", allRows[i]);
+                            isExists = true;
+                            break;
+                        }
+                    }
+                }
+                if (isExists == false) {
+                    $("#tableSdOrderMPro").datagrid("checkRow", 0);
+                    $("#form1").form("load", allRows[0]);
+                    var iSdOrderMRecNo = allRows[0].iSdOrderMRecNo;
+                    var jsonobj = {
+                        StoreProName: "SpMachineLastSdOrderMRecNo",
+                        StoreParms: [
+                    {
+                        ParmName: "@sMachineCode",
+                        Value: sMachineID
+                    },
+                    {
+                        ParmName: "@iLastSdOrderMRecNo",
+                        Value: iSdOrderMRecNo
+                    }
+                ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                }
+            }
+            $('.datagrid-cell').css('font-size', '18px');
+        }
+        function barcodeScan() {
+            if (event.keyCode == 13) {
+                var isFound = false;
+                var barcode = $("#txbBarcode").val();
+                if (barcode != "") {
+                    if (barcode.length == 3 || barcode == "master") {
+                        var sqlObjPerson = {
+                            TableName: "bscDataPerson",
+                            Fields: "sCode,sName",
+                            SelectAll: true,
+                            Filters: [{
+                                Field: "sCode",
+                                ComOprt: "=",
+                                Value: "'" + barcode + "'"
+                            }]
+                        };
+                        var resultPerson = SqlGetData(sqlObjPerson);
+                        if (resultPerson.length > 0) {
+                            //$("#form1").form("load", resultPerson[0]);
+                            $("#Text7").textbox("setValue", resultPerson[0].sName);
+                            $("#Text6").textbox("setValue", resultPerson[0].sCode);
+                            getPersonYield(barcode);
+                            var tip = $("#txtScanResult").val();
+                            tip = tip == "" ? "工号扫描成功" : tip + "\r\n工号扫描成功";
+                            $("#txtScanResult").val(tip);
+                            $("#txbBarcode").val("");
+                            $("#txbBarcode").focus();
+                            isFound = true;
+                        }
+                        else {
+                            MessageShow("工号不存在", "对不起，工号不存在！");
+                            var tip = $("#txtScanResult").val();
+                            tip = tip == "" ? "工号不存在" : tip + "\r\n工号不存在";
+                            $("#txtScanResult").val(tip);
+                            $("#txbBarcode").val("");
+                            $("#txbBarcode").focus();
+                        }
+                    }
+                    if (barcode.length == 6 && barcode != "master") {
+                        /*var sqlObjProbarcode = {
+                        TableName: "vwSDOrderM_GMJ",
+                        Fields: "iRecNo,sProBarcode,iBscDataMatFabRecNo,sProOrderNo,sOrderNo,convert(varchar(10),dProDate,23) as sProDateStr,sBscDataFabCode,sBscDataFabName,fProductWidth,fProductWeight,fProduceQty,fFabInQty,fFabNotInQty",
+                        SelectAll: "True",
+                        Filters: [
+                        {
+                        Field: "sProBarcode",
+                        ComOprt: "=",
+                        Value: "'" + barcode + "'",
+                        LinkOprt: "and"
+                        },
+                        {
+                        Field: "isnull(sProOrderNo,'')",
+                        ComOprt: "<>",
+                        Value: "''",
+                        LinkOprt: "and"
+                        },
+                        {
+                        Field: "iStatus",
+                        ComOprt: "=",
+                        Value: "4"
+                        }
+                        ]
+                        }
+                        var result = SqlGetData(sqlObjProbarcode);
+                        if (result.length > 0) {
+                        $("#form1").form("load", result[0]);
+                        var tip = $("#txtScanResult").val();
+                        tip = tip == "" ? "生产单扫描成功" : tip + "\r\n生产单扫描成功";
+                        $("#txtScanResult").val(tip);
+                        $("#txbBarcode").val("");
+                        $("#txbBarcode").focus();
+                        isFound = true;
+                        }*/
+                        var sqlObjMachinebarcode = {
+                            TableName: "vwBscDataMachine",
+                            Fields: "sBarcode,sMachineCode,iLastSdOrderMRecNo",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "sBarcode",
+                                    ComOprt: "=",
+                                    Value: "'" + barcode + "'"
+                                }
+                            ]
+                        }
+                        var resultMachine = SqlGetData(sqlObjMachinebarcode);
+                        if (resultMachine.length > 0) {
+                            $("#txbMachine").combobox("setValue", resultMachine[0].sMachineCode);
+                            var tip = $("#txtScanResult").val();
+                            tip = tip == "" ? "机台扫描成功" : tip + "\r\n机台扫描成功";
+                            $("#txtScanResult").val(tip);
+                            $("#txbBarcode").val("");
+                            $("#txbBarcode").focus();
+                            searchSdOrderMPro();
+                            isFound = true;
+                        }
+                        else {
+                            MessageShow("机台不存在", "对不起，机台不存在！");
+                            var tip = $("#txtScanResult").val();
+                            tip = tip == "" ? "机台不存在" : tip + "\r\机台不存在";
+                            $("#txtScanResult").val(tip);
+                            $("#txbBarcode").val("");
+                            $("#txbBarcode").focus();
+                        }
+                    }
+                    if (isFound == false && barcode.length != 4 && barcode != 6) {
+                        MessageShow("条码不存在", "对不起，条码不存在！");
+                        var tip = $("#txtScanResult").val();
+                        tip = tip == "" ? "条码不存在" : tip + "\r\n条码不存在";
+                        $("#txtScanResult").val(tip);
+                        $("#txbBarcode").val("");
+                        $("#txbBarcode").focus();
+                    }
+                }
+            }
+        }
+        function MessageShow(title, message) {
+            $.messager.show({
+                timeout: 2000,
+                title: title,
+                msg: "<span style='color:red;font-weight:bold;'>" + message + "</span>",
+                showType: 'show',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+        function selectStock(newValue, oldValue) {
+            //仓位
+            var sqlObjStockD = {
+                TableName: "bscDataStockD",
+                Fields: "iRecNo,sBerChID",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iMainRecNo",
+                        ComOprt: "=",
+                        Value: "'" + newValue + "'"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "iRecNo",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultStockD = SqlGetData(sqlObjStockD);
+            if (resultStockD.length > 0) {
+                $("#txbBscDataStockD").combobox("loadData", resultStockD);
+                $("#txbBscDataStockD").combobox("setValue", resultStockD[0].iRecNo);
+            }
+        }
+        function comboboxFormat(row) {
+            var opts = $(this).combobox('options');
+            return "<span style='font-size:18px; font-weight:bold; color:blue;'>" + row[opts.textField] + "</span>";
+        }
+        function doCancel(index) {
+            var allRows = $("#tableTodayYield").datagrid("getRows");
+            var iSdOrderMRecNo = allRows[index].iSDOrderMRecNo;
+            var fWeight = allRows[index].fWeight;
+            $.messager.confirm("您确认撤销吗？", "您确认撤销吗？", function (r) {
+                if (r) {
+                    var jsonobj = {
+                        StoreProName: "SpTodayYieldCancel",
+                        StoreParms: [
+                        {
+                            ParmName: "@iRecNo",
+                            Value: allRows[index].iRecNo
+                        }
+                        ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                    if (result != "1") {
+                        alert(result);
+                    }
+                    else {
+                        $("#tableTodayYield").datagrid("deleteRow", index);
+                        var sumQty = 0.00;
+                        for (var i = 0; i < allRows.length; i++) {
+                            sumQty += Number(allRows[i].fQty);
+                        }
+                        sumQty = parseFloat(sumQty.toFixed(2));
+                        var footData = [{ fQty: sumQty, sBarCode: "卷数：" + allRows.length}];
+                        $("#tableTodayYield").datagrid("reloadFooter", footData);
+                        $("#tableTodayYield").datagrid("loadData", allRows);
+                        var allRowsOrder = $("#tableSdOrderMPro").datagrid("getRows");
+                        for (var i = 0; i < allRowsOrder.length; i++) {
+                            if (allRowsOrder[i].iSdOrderMRecNo == iSdOrderMRecNo) {
+                                var fReadyProduceQty = isNaN(Number(allRowsOrder[i].fReadyProduceQty)) ? 0 : Number(allRowsOrder[i].fReadyProduceQty);
+                                var fNotProduceQty = isNaN(Number(allRowsOrder[i].fNotProduceQty)) ? 0 : Number(allRowsOrder[i].fNotProduceQty);
+                                var iPurQty = isNaN(Number(allRowsOrder[i].iPurQty)) ? 0 : Number(allRowsOrder[i].iPurQty);
+                                if (fReadyProduceQty > 0) {
+                                    var fFabInQtySum = Number(fReadyProduceQty) - Number(fWeight);
+                                    fFabInQtySum = parseFloat(fFabInQtySum.toFixed(2));
+                                    var iPurQtySum = iPurQty - 1;
+                                    var fFabNotInQtySum = Number(fNotProduceQty) + Number(fWeight);
+                                    $("#tableSdOrderMPro").datagrid("updateRow", { index: i, row: { fReadyProduceQty: fFabInQtySum, iPurQty: iPurQtySum, fNotProduceQty: fFabNotInQtySum } });
+                                }
+                                break;
+                            }
+                        }
+                        $('.datagrid-cell').css('font-size', '18px');
+                    }
+                }
+            })
+        }
+        function getPersonYield(sCode) {
+            var sqlWeight = {
+                TableName: "vwProWeightRecord",
+                Fields: "iRecNo,sProOrderNo,sOrderNo,sBscDataFabCode,iSDOrderMRecNo,sBscDataFabName,sUserID,sPersonName,sInputDate,sClasses,sMachineID,sMachineCode,sBarcode,fProductWidth,fProductWeight,fWeight,sReelNo,sRemark,sMatUseSimple",
+                SelectAll: "True",
+                Filters: [
+                        {
+                            Field: "sUserID",
+                            ComOprt: "=",
+                            Value: "'" + sCode + "'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "convert(varchar(10),dInputDate,23)",
+                            ComOprt: "=",
+                            Value: "convert(varchar(10),getdate(),23)"
+                        }
+                    ]
+            };
+            var resultWeight = SqlGetData(sqlWeight);
+            if (resultWeight.length > 0) {
+                $("#tableTodayYield").datagrid("loadData", resultWeight);
+            }
+            else {
+                $("#tableTodayYield").datagrid("loadData", []);
+            }
+            var allRows = $("#tableTodayYield").datagrid("getRows");
+            var sumQty = 0.00;
+            for (var i = 0; i < allRows.length; i++) {
+                sumQty += Number(allRows[i].fQty);
+            }
+            sumQty = parseFloat(sumQty.toFixed(2));
+            var footData = [{ fQty: sumQty, sBarCode: "卷数：" + allRows.length}];
+            $("#tableTodayYield").datagrid("reloadFooter", footData);
+            $('.datagrid-cell').css('font-size', '18px');
+
+        }
+        //获取今天日期：格式2015-01-01
+        function getNowDate() {
+            var nowdate = new Date();
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+        //获取当前时时
+        function getNowTime() {
+            var nowdate = new Date();
+            var hour = nowdate.getHours();      //获取当前小时数(0-23)
+            var minute = nowdate.getMinutes();     //获取当前分钟数(0-59)
+            var second = nowdate.getSeconds();
+            return hour + ":" + minute + ":" + second;
+        }
+        function OpenPort() {
+            if (MSComm1.PortOpen == false) {
+                MSComm1.PortOpen = true;
+            }
+            else {
+                //window.alert("已经开始接收数据!");
+            }
+            isPortOpen = true;
+        }
+        function CloseOrOpenPort() {
+            if (MSComm1.PortOpen == true) {
+                MSComm1.PortOpen = false;
+                isPortOpen = false;
+                $("#btnOpenOrClose").val("打开称重机");
+            }
+            else {
+                MSComm1.PortOpen = true;
+                isPortOpen = true;
+                $("#btnOpenOrClose").val("断开称重机");
+            }
+        }
+        function openSetPort() {
+            var portCookie = getCookie("mscomm32_port");
+            if (portCookie != null) {
+                $("#txbCommPort").numberspinner("setValue", portCookie);
+            }
+            $("#divCommPort").dialog("open");
+        }
+        function savePort() {
+            var port = $("#txbCommPort").numberspinner("getValue");
+            if (port == null || port == undefined || port == "") {
+                alert("端口号不能为空");
+                return;
+            }
+            if (MSComm1.PortOpen == true) {
+                MSComm1.PortOpen = false;
+            }
+            setCookie("mscomm32_port", port, "d3650");
+            window.location.reload();
+            /*var prms = document.getElementById("MSComm1").getElementsByTagName("param");
+            for (var i = 0; i < prms.length; i++) {
+            if (prms[i].name == "CommPort") {
+            prms[i].value = port;
+            break;
+            }
+            }
+            if (MSComm1.PortOpen == false) {
+            MSComm1.PortOpen == true;
+            }*/
+            $("#divCommPort").dialog("close");
+        }
+        function portCancel() {
+            $("#divCommPort").dialog("close");
+        }
+        /*window.onbeforeunload = function () {
+        if (MSComm1.PortOpen == true) {
+        alert("1");
+        MSComm1.PortOpen = false;
+        }
+        }*/
+    </script>
+    <style type="text/css">
+        .centerTable
+        {
+            border-spacing: 5px;
+        }
+        .centerTable tr td
+        {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+        }
+        .centerTable1
+        {
+            border-spacing: 3px;
+        }
+        .centerTable1 tr td
+        {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+        }
+        
+        .textbox .textbox-text
+        {
+            font-size: 24px; /*color: Blue;*/
+            font-weight: bold;
+        }
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 40px; border-radius: 5px;*/
+        }
+        .txbreadonlyRed
+        {
+            background-color: #ffffaa;
+            color: Red;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 40px; border-radius: 5px;*/
+        }
+        .datagrid-header-row
+        {
+            height: 45px;
+            font-family: 微软雅黑;
+        }
+        .datagrid-header .datagrid-cell span
+        {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'north',split:true,border:false" style="height: 450px;">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'north'" style="height: 70px;">
+                <table class="centerTable">
+                    <tr>
+                        <td>
+                            班次
+                        </td>
+                        <td>
+                            <input id="txbClass" class="easyui-combobox" data-options="required:true,valueField:'sName',textField:'sName',formatter:comboboxFormat"
+                                type="text" style="height: 40px; width: 100px;" />
+                        </td>
+                        <td>
+                            条码
+                        </td>
+                        <td>
+                            <input id="txbBarcode" onkeydown="barcodeScan()" style="width: 200px; height: 40px;
+                                font-size: 18px;" type="text" />
+                        </td>
+                        <td>
+                            机台
+                        </td>
+                        <td>
+                            <input id="txbMachine" class="easyui-combobox" data-options="required:true,valueField:'iRecNo',textField:'sMachineCode',formatter:comboboxFormat,onSelect:searchSdOrderMPro,onClick:searchSdOrderMPro"
+                                   type="text" style="height: 40px; width: 70px;" />
+                        </td>
+                        <td>
+                            员工
+                        </td>
+                        <td>
+                            <input id="Text7" class="easyui-textbox" name="sName" data-options="readonly:true"
+                                type="text" style="height: 40px; width: 80px;" />
+                        </td>
+                        <td style="padding-left: 10px;">
+                            <textarea id="txtScanResult" onpropertychange="this.scrollTop = this.scrollHeight "
+                                onfocus="this.scrollTop = this.scrollHeight " style="width: 200px; height: 40px;"
+                                readonly="readonly"></textarea>
+                        </td>
+                        <td>
+                            <input id="btnOpenOrClose" type="button" style="width: 120px; height: 40px; font-size: 20px;"
+                                value="断开称重机" onclick="CloseOrOpenPort()" />
+                            <input id="btnSetPort" type="button" style="width: 120px; height: 40px; font-size: 20px;"
+                                value="设置端口号" onclick="openSetPort();" />
+                            <input id="btnExit " type="button" style="width: 120px; height: 40px; font-size: 20px;"
+                                   value="退出" onclick="top.closeTab();" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div data-options="region:'center',split:true">
+                <table id="tableSdOrderMPro">
+                </table>
+            </div>
+            <div data-options="region:'south'" style="height: 175px;">
+                <form id="form1">
+                <table class="centerTable1">
+                    <tr>
+                        <td style="display: none;">
+                            生产单号
+                        </td>
+                        <td style="display: none;">
+                            <input id="Text1" class="easyui-textbox" name="sProOrderNo" data-options="readonly:true"
+                                type="text" style="height: 40px;" />
+                            <input id="iSdOrderMRecNo" name="iSdOrderMRecNo" type="hidden" />
+                            <input id="iBscDataMatFabRecNo" name="iBscDataMatFabRecNo" type="hidden" />
+                            <div style="display: none;">
+                                <input id="Text8" class="easyui-textbox" name="fProductWidth" data-options="readonly:true"
+                                    type="text" style="height: 40px;" />
+                                <input id="Text9" class="easyui-textbox" name="fProductWeight" data-options="readonly:true"
+                                    type="text" style="height: 40px;" />
+                                <input id="Text6" class="easyui-textbox" name="sCode" data-options="readonly:true"
+                                    type="text" style="height: 40px;" />
+                                <input id="txbBscDataStock" class="easyui-combobox" data-options="required:true,valueField:'iRecNo',textField:'sStockName',onChange:selectStock,formatter:comboboxFormat"
+                                    type="text" style="height: 40px;" />
+                                <input id="txbBscDataStockD" class="easyui-combobox" data-options="valueField:'iRecNo',textField:'sBerChID',formatter:comboboxFormat"
+                                    type="text" style="height: 40px;" />
+                                <iframe id="ifrpb" name="ifrpb" width="0" height="0"></iframe>
+                            </div>
+                        </td>
+                        <td>
+                            订单号
+                        </td>
+                        <td>
+                            <input id="Text2" class="easyui-textbox" name="sOrderNo" data-options="readonly:true"
+                                type="text" style="height: 40px;" />
+                        </td>
+                        <td style="display: none;">
+                            下单日期
+                        </td>
+                        <td style="display: none;">
+                            <input id="Text3" class="easyui-textbox" name="sProDateStr" data-options="readonly:true"
+                                type="text" style="height: 40px;" />
+                        </td>
+                        <td>
+                            坯布编号
+                        </td>
+                        <td>
+                            <input id="Text4" class="easyui-textbox" name="sBscDataFabCode" data-options="readonly:true"
+                                type="text" style="height: 40px; color: Red; width:180px;" />
+                        </td>
+                        <td>
+                            坯布名称
+                        </td>
+                        <td>
+                            <input id="Text5" class="easyui-textbox" name="sBscDataFabName" data-options="readonly:true"
+                                type="text" style="height: 40px; color: Red; width:180px;" />
+                        </td>
+                        
+                    </tr>
+                    <tr>
+                        <td>
+                            纱线成份
+                        </td>
+                        <td>
+                            <input id="Text10" class="easyui-textbox" name="sMatUseSimple" data-options="readonly:true"
+                                type="text" style="height: 40px; color: Red; width:180px;" />
+                        </td>
+                        <td>
+                            机型
+                        </td>
+                        <td>
+                            <input id="Text11" class="easyui-textbox" name="sModelType" data-options="readonly:true"
+                                type="text" style="height: 40px; color: Red; width:180px;" />
+                        </td>
+                        <td>
+                            重量
+                        </td>
+                        <td>
+                            <input id="txbWeight" class="easyui-numberbox" data-options="required:true,precision:1"
+                                type="text" style="height: 40px; width: 80px;" />KG
+                        </td>
+                        <td>
+                            <input id="Button1" type="button" value="确定" style="width: 100px; height: 70px; font-size: 24px;
+                                font-weight: bold;" onclick="stockIn()" />
+                        </td>
+                        
+                    </tr>
+                    <tr>
+                        <td>
+                            批号
+                        </td>
+                        <td colspan="5">
+                            <input id="Text12" class="easyui-textbox" name="sBatchNo" data-options="multiline:true,width:250" type="text"
+                                style="height: 40px; color: Red; width:400px;" />
+                        </td>
+                    </tr>
+                </table>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div data-options="region:'center'" style="background: #eee;">
+        <table id="tableTodayYield">
+        </table>
+    </div>
+    <!--<div id="tb">
+        <table>
+            <tr>
+                <td>
+                    日期从
+                </td>
+                <td>
+                    <input id="txbUpDateFrom" class="easyui-datebox" style="width: 120px;" type="text" />
+                </td>
+                <td>
+                    至
+                </td>
+                <td>
+                    <input id="txbUpDateTo" class="easyui-datebox" style="width: 120px;" type="text" />
+                </td>
+                <td>
+                    生产单号
+                </td>
+                <td>
+                    <input id="txbUpSearchProOrder" class="easyui-textbox" style="width: 120px;" type="text" />
+                </td>
+                <td>
+                    坯布编号
+                </td>
+                <td>
+                    <input id="txbUpSearchFabCocde" class="easyui-textbox" style="width: 120px;" type="text" />
+                </td>
+                <td>
+                    <input id="Checkbox1" type="checkbox" />
+                    <label for="Checkbox1">
+                        已完成</label>
+                </td>
+                <td style="width: 2px;">
+                </td>
+                <td>
+                    <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search',plain:true"
+                        onclick="searchSdOrderMPro()">查询</a>
+                </td>
+            </tr>
+        </table>
+    </div>-->
+    <div id="divCommPort" class="easyui-dialog" style="text-align: center; padding-top: 10px;"
+        data-options="top:50,closed:true,closable:true,title:'设置端口号',collapsible:false,minimizable:false,maximizable:false,modal:true,width:250,height:120,buttons:[{iconCls:'icon-save',text:'保存',handler:savePort},{iconCls:'icon-cancel',text:'取消',handler:portCancel}]">
+        <table style="margin: auto;">
+            <tr>
+                <td>
+                    端口号
+                </td>
+                <td>
+                    <input id="txbCommPort" class="easyui-numberspinner" data-options="precision:0,required:true"
+                        style="width: 100px;" type="text" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <!--设置并返回通讯端口号。-->
+    <!--comInputModeText 0 （缺省） 通过 Input 属性以文本方式取回数据。comInputModeBinary 1  通过 Input 属性以二进制方式检取回数据。-->
+    <!--<object classid="clsid:648A5600-2C6E-101B-82B6-000000000014" id="MSComm1" codebase="MSCOMM32.OCX"
+        type="application/x-oleobject" style="left: 54px; top: 14px">
+        <param name="CommPort" value="3">        
+        <param name="DTREnable" value="1">
+        <param name="Handshaking" value="0">
+        <param name="InBufferSize" value="1024">
+        <param name="InputLen" value="0">
+        <param name="NullDiscard" value="0">
+        <param name="OutBufferSize" value="512">
+        <param name="ParityReplace" value="?">
+        <param name="RThreshold" value="1">
+        <param name="RTSEnable" value="1">
+        <param name="SThreshold" value="2">
+        <param name="EOFEnable" value="0">
+        <param name="InputMode" value="0">       
+        <param name="DataBits" value="8">
+        <param name="StopBits" value="1">
+        <param name="BaudRate" value="9600">
+        <param name="Settings" value="9600,N,8,1">
+    </object>-->
+</body>
+</html>

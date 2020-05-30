@@ -1,0 +1,9 @@
+﻿<%@ master language="C#" masterpagefile="~/Base/BasePage.master" autoeventwireup="true" inherits="Base_BasePageNoRight, App_Web_basepagenoform.master.fca1e55" %>
+<%@ MasterType VirtualPath="~/Base/BasePage.master"%> 
+<asp:Content ID="Content1" ContentPlaceHolderID="head" Runat="Server">
+    <asp:ContentPlaceHolder ID="head" runat="server"></asp:ContentPlaceHolder>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="_" Runat="Server">
+    <asp:ContentPlaceHolder ID="_" runat="server"></asp:ContentPlaceHolder>
+</asp:Content>
+

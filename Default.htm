@@ -1,0 +1,291 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>环鑫ERP管理系统</title>
+    <link href="/Base/JS/easyui/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/JS/fusioncharts/fusioncharts.js" type="text/javascript"></script>
+    <script src="/JS/fusioncharts/themes/fusioncharts.theme.fint.js" type="text/javascript"></script>
+    <!--<script src="/loginTheme/JS/jquery.fullcalendar.js" type="text/javascript"></script>-->
+    <script src="/Base/JS/DataInterface.js?<%= Guid.NewGuid() %>" type="text/javascript"></script>
+    <script src="JS/Default.js?<%= Guid.NewGuid() %>" type="text/javascript"></script>
+    <link href="images/accIcon.css" rel="stylesheet" type="text/css" />
+    <link href="loginTheme/css/style.css" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        body
+        {
+            font-family:'Microsoft YaHei';
+        }
+        .tab
+        {
+            margin-left: 10px;
+            border-collapse: collapse;
+        }
+        .tab tr td
+        {
+            height: 20px;
+            padding: 5px;
+            border-bottom: solid 1px #95B8E7;
+        }
+        .tdFirst
+        {
+            width: 45%;
+            height: 45%;
+            vertical-align: top;
+        }
+        .tdRight
+        {
+            width: 45%;
+            height: 45%;
+            vertical-align: middle;
+        }
+        .tree-node
+        {
+            /*height: 18px;*/
+            height: 22px;
+            padding-top: 4px;
+            vertical-align: middle;
+            white-space: nowrap;
+            cursor: pointer;
+            border-bottom: 1px solid #cccccc;
+        }
+        .panelHeaderCls
+        {
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px; /*border: none;*/
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            background-color: #ffffff;
+            background: -webkit-linear-gradient(top,#ffffff 0,#ffffff 100%);
+            background: -moz-linear-gradient(top,#ffffff 0,#ffffff 100%);
+            background: -o-linear-gradient(top,#ffffff 0,#ffffff 100%);
+            background: linear-gradient(to bottom,#ffffff 0,#ffffff 100%);
+            background-repeat: repeat-x;
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr=#ffffff,endColorstr=#ffffff,GradientType=0);
+        }
+        .panelBodyCls
+        {
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px; /*border: none;*/
+        }
+        .titleHeader
+        {
+            border: none;
+        }
+    </style>
+</head>
+<body class="easyui-layout">
+    <div data-options="region:'north',maxHeight:70,border:false" style="height: 70px;
+        margin: 0px; padding: 0px; overflow: hidden; background: url(loginTheme/images/topbg.gif) repeat-x;">
+        <div class="topleft">
+            <img src="images/zs-logo1.png" style="height: 58px;" title="中盛ERP" />
+        </div>
+        <ul class="nav">
+            <li><a href="#" class="selected">
+                <img src="loginTheme/images/icon01.png" title="工作台" /><h2>
+                    工作台</h2>
+            </a></li>
+            <li><a href="#">
+                <img src="loginTheme/images/icon02.png" title="模型管理" /><h2>
+                    模型管理</h2>
+            </a></li>
+            <li><a href="#">
+                <img src="loginTheme/images/icon03.png" title="模块设计" /><h2>
+                    模块设计</h2>
+            </a></li>
+            <li><a href="#">
+                <img src="loginTheme/images/icon04.png" title="常用工具" /><h2>
+                    常用工具</h2>
+            </a></li>
+            <li><a href="#">
+                <img src="loginTheme/images/icon05.png" title="文件管理" /><h2>
+                    文件管理</h2>
+            </a></li>
+            <li><a href="#">
+                <img src="loginTheme/images/icon06.png" title="系统设置" /><h2>
+                    系统设置</h2>
+            </a></li>
+        </ul>
+        <div class="topright">
+            <!--<ul>
+                <li><a href="#" onclick="openwindow('/Base/ChangePsd.aspx','350px','140px')">
+                    修改密码</a> </li>
+                <li><a href="#" onclick="loginout()">
+                    注销</a></li>
+                <li><a href="#" onclick="abrout()">
+                    退出</a></li>
+            </ul>-->
+            <table>
+                <tr>
+                    <!--<td>
+                        <div class="user">
+                            <span id="spanUserName">admin</span>
+                        </div>
+                    </td>-->
+                    <td colspan="3" style="height: 30px; text-align: center; color: White">
+                        <span id="spanUserName" style="float: left; font-weight: bold;">admin</span><span
+                            style="float: left;">你好,今天是 </span><span style="float: left;" id="spanTime">
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="user1" style="float: left;">
+                            <span><a href="#" style="color: White;" onclick="openwindow('/Base/ChangePsd.aspx','350px','140px')">
+                                修改密码</a></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="user2" style="float: left;">
+                            <span><a href="#" style="color: White;" onclick="loginout()">注销</a></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="user3" style="float: left;">
+                            <span><a href="#" style="color: White;" onclick="abrout()">退出</a></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="user" style="float: left;">
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div data-options="region:'west',iconCls:'icon-home',split:true" style="width: 180px;">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'north',border:false">
+                <div class="lefttop" style="height: 40px;">
+                    <span></span>用户菜单</div>
+            </div>
+            <div data-options="region:'center',border:false">
+                <div id="tabWork" class="easyui-tabs" data-options="fit:true,border:false,tabPosition:'bottom',justified:true,border:false">
+                    <div title="常用工作" data-options="iconCls:'icon-man'">
+                        <ul id="treeUserCommonMenu">
+                        </ul>
+                    </div>
+                    <div title="全部工作" data-options="selected:true,iconCls:'icon-all'">
+                        <div id="accordion1" class="easyui-accordion" data-options="fit:true,border:false,onSelect:f_AccSelect,border:false"
+                            style="overflow: hidden;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div data-options="region:'center',collapsible:true,border:false">
+        <div id="tab" class="easyui-tabs" data-options="fit:true,border:false">
+            <div title="首页" data-options="iconCls:'icon-home'" style="text-align: center; vertical-align: middle;
+                overflow: hidden;">
+                <div style="float: left; width: 50%; height: 100%">
+                    <table style="width: 100%; height: 100%; border-spacing: 5px; border-collapse: separate;
+                        margin: auto;">
+                        <tr>
+                            <td class="tdFirst">
+                                <div class="easyui-panel" data-options="headerCls:'panelHeaderCls',bodyCls:'panelBodyCls',fit:true,title:'公告新闻',iconCls:'icon-gg'">
+                                    <table id="tableNotice" style="width: 95%" class="tab">
+                                    </table>
+                                </div>
+                            </td>
+                            <!--<td class="tdFirst">
+                            <div class="easyui-panel" data-options="headerCls:'panelHeaderCls',bodyCls:'panelBodyCls',fit:true,title:'事务预警',iconCls:'icon-calendar'">
+                                
+                            </div>
+                        </td>-->
+                        </tr>
+                        <tr>
+                            <td class="tdFirst">
+                                <div class="easyui-panel" data-options="headerCls:'panelHeaderCls',bodyCls:'panelBodyCls',fit:true,title:'待办事项',iconCls:'icon-todo'">
+                                    <table id="tabletodo" style="width: 95%" class="tab">
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="float: left; width: 50%; height: 100%">
+                    <table style="width: 100%; height: 100%; border-spacing: 5px; border-collapse: separate;
+                        margin: auto;">
+                        <tr>
+                            <td style="width: 98%; height: 98%;">
+                                <div class="easyui-panel" id="divChart" data-options="headerCls:'panelHeaderCls',bodyCls:'panelBodyCls',fit:true,title:'数据分析',iconCls:'icon-chart',tools:[{iconCls:'icon-zoomin',text:'放大',handler:charZoomIn}]">
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="mm" class="easyui-menu" style="width: 120px; display: none;">
+        <div id="mm-tabclose" name="6">
+            刷新</div>
+        <div id="Div1" name="1">
+            关闭</div>
+        <div id="mm-tabcloseall" name="2">
+            全部关闭</div>
+        <div id="mm-tabcloseother" name="3">
+            除此之外全部关闭</div>
+        <div class="menu-sep">
+        </div>
+        <div id="mm-tabcloseright" name="4">
+            当前页右侧全部关闭</div>
+        <div id="mm-tabcloseleft" name="5">
+            当前页左侧全部关闭</div>
+    </div>
+    <div id="divWin" style="display: none;">
+    </div>
+    <div id="divNoticeDetail" style="display: none;">
+    </div>
+    <div id="divZoomInChar" class="easyui-window" data-options="iconCls:'icon-chart',modal:true,closable:true,closed:true,resizable:false,maximized:true,title:'数据分析',minimizable:false,maximizable:false,collapsible:false">
+        <!--<div class="easyui-panel" id="divZoomInCharContainer" data-options="headerCls:'panelHeaderCls',bodyCls:'panelBodyCls',fit:true,title:'数据分析',iconCls:'icon-chart',tools:[{iconCls:'icon-zoomin',handler:charZoomIn}]">
+        
+        </div>-->
+    </div>
+    <!--<div id="cc" class="easyui-layout" style="width: 100%; height: 100%; margin: auto;">
+                    <div data-options="region:'north',iconCls:'icon-todo',split:true" style="height: 50%;">
+                        <div id="ccSub" class="easyui-layout" style="width: 100%; height: 100%; margin: auto;">
+                            <div data-options="region:'west',title:'公告',iconCls:'icon-gg',split:true" style="width: 50%;">
+                                <table id="tableNotice" style="width: 95%" class="tab">
+                                </table>
+                            </div>
+                            <div data-options="region:'center'">
+                                <div id="ccSubSub" class="easyui-layout" style="width: 100%; height: 100%; margin: auto;">
+                                    <div id="divCalendar" data-options="region:'center',title:'日历',iconCls:'icon-calendar',split:true"
+                                        style="width: 100%; height: 99%;">
+                                        <div id="div_calendar">
+                                        </div>
+                                    </div>
+                                    <div id="divJob" data-options="region:'south',title:'我的任务',iconCls:'icon-job',split:true"
+                                        style="width: 100%; height: 1%;">
+                                        <table id="tableJob">
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-options="region:'west',title:'待办事项',iconCls:'icon-todo',split:true" style="width: 50%;">
+                        </table>
+                        <table id="tabletodo" style="width: 95%" class="tab">
+                        </table>
+                    </div>
+                    <div data-options="region:'center'">
+                        <div id="Div2" class="easyui-layout" style="width: 100%; height: 100%; margin: auto;">
+                            <div id="divLink" data-options="region:'north',title:'快捷入口',iconCls:'icon-link',split:true"
+                                style="width: 100%; height: 30%;">
+                            </div>
+                            <div id="divChart" data-options="region:'center',title:'数据分析',iconCls:'icon-chart',split:true"
+                                style="width: 100%; height: 70%">
+                            </div>
+                        </div>
+                    </div>
+                </div>-->
+</body>
+</html>

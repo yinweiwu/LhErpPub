@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>欢迎登录环鑫ERP</title>
+    <link href="/loginTheme/css/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" language="javascript" src="/loginTheme/js/jquery.js"></script>
+    <script type="text/javascript" src="/loginTheme/js/cloud.js"></script>
+    <script src="loginTheme/js/json2.js" type="text/javascript"></script>
+    <script type="text/javascript" language="javascript">
+        //平台、设备和操作系统
+        var system = {
+            win: false,
+            mac: false,
+            xll: false
+        };
+        //检测平台
+        var p = navigator.platform;
+        //alert(p);
+        system.win = p.indexOf("Win") == 0;
+        system.mac = p.indexOf("Mac") == 0;
+        system.x11 = (p == "X11") || (p.indexOf("Linux") == 0);
+        //跳转语句
+        if (system.win || system.mac || system.xll) {//转向后台登陆页面
+
+        }
+        else {
+            if (getQueryString("from") != "mobile") {
+                window.location.href = "loginMobile.htm?r=" + Math.random();
+            }
+        }
+
+        $(function () {
+            $('.loginbox').css({ 'position': 'absolute', 'left': ($(window).width() - 692) / 2 });
+            $(window).resize(function () {
+                $('.loginbox').css({ 'position': 'absolute', 'left': ($(window).width() - 692) / 2 });
+            })
+
+            document.getElementById("TxtPassword").focus();
+            if (document.addEventListener) {
+                //如果是Firefox  
+                document.addEventListener("keypress", enterEvent, true);
+            } else {
+                //如果是IE
+                document.attachEvent("onkeypress", enterEvent);
+            }
+            function enterEvent(evt) {
+                if (evt.keyCode == 13) {
+                    login();
+                }
+            }
+            var url = "/ashx/LoginHandler.ashx?otype=getuserid";
+            var parms = "";
+            var async = false;
+            var ispost = false;
+            var result = callpostback(url, parms, async, ispost);
+            if (result != "") {
+                var resultObj = JSON2.parse(result);
+                document.getElementById("TxtUserName").value = resultObj.userid;
+                document.getElementById("TxtPassword").value = resultObj.pwd;
+            }
+            else {
+                document.getElementById("TxtUserName").focus();
+            }
+        });
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        function login() {
+            var user = document.getElementById("TxtUserName").value;
+            var pwd = document.getElementById("TxtPassword").value;
+            var isRemeber = document.getElementById("ckbRemember").checked == true ? 1 : 0;
+            if (user == "") {
+                alert("请输入用户名");
+                return;
+            }
+            var url = "/ashx/LoginHandler.ashx";
+            var parms = "userid=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pwd)+"&remember="+isRemeber;
+            var async = false;
+            var ispost = true;
+            var result = callpostback(url, parms, async, ispost);
+            if (result.indexOf("warn") > -1 || result.indexOf("error") > -1) {
+                alert(result.substr(result.indexOf(":") + 1, result.length - result.indexOf(":") - 1));
+            }
+            else {
+                var returnurl = decodeURIComponent(getQueryString("ReturnUrl"));
+
+                if (returnurl != "null" && returnurl != null && returnurl != "/") {
+                    window.location.href = returnurl + "?random=" + Math.random();
+                }
+                else {
+                    window.location.href = "Default.htm?random=" + Math.random();
+                }
+
+            }
+        }
+        function callpostback(url, parms, async, ispost) {
+            var xmlhttp;
+            if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp = new XMLHttpRequest();
+            }
+            else {// code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            if (async) {
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                        return xmlhttp.responseText;
+                    }
+                    //document.getElementById("operatresult").value = xmlhttp.responseText;
+                    //$("#operatresult").value = xmlhttp.responseText;
+                }
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+            }
+            else {
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+                var result = xmlhttp.status;
+                if (result == 200) {
+                    return xmlhttp.responseText;
+                }
+            }
+        }
+        function myBrowser() {
+            var userAgent = navigator.userAgent; //取得浏览器的userAgent字符串
+            var isOpera = userAgent.indexOf("Opera") > -1;
+            if (isOpera) {
+                return "Opera"
+            }; //判断是否Opera浏览器
+            if (userAgent.indexOf("Firefox") > -1) {
+                return "FF";
+            } //判断是否Firefox浏览器
+            if (userAgent.indexOf("Chrome") > -1) {
+                return "Chrome";
+            }
+            if (userAgent.indexOf("Safari") > -1) {
+                return "Safari";
+            } //判断是否Safari浏览器
+            if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+                return "IE";
+            }; //判断是否IE浏览器
+        }
+    </script>
+</head>
+<body style="background-color: #1c77ac; background-image: url(images/light.png);
+    background-repeat: no-repeat; background-position: center top; overflow: hidden;">
+    <div id="mainBody">
+        <div id="cloud1" class="cloud">
+        </div>
+        <div id="cloud2" class="cloud">
+        </div>
+    </div>
+    <div class="logintop">
+        <span>欢迎登录环鑫ERP</span>
+        <ul>
+            <li><a href="http://www.zshsoft.cn/" target="_blank">帮助</a></li>
+            <li><a href="http://www.zshsoft.cn/" target="_blank">关于</a></li>
+        </ul>
+    </div>
+    <div class="loginbody">
+        <span class="systemlogo"></span>
+        <div class="loginbox">
+            <ul>
+                <li>
+                    <input id="TxtUserName" name="" type="text" class="loginuser" value="" /></li>
+                <li>
+                    <input id="TxtPassword" name="" type="password" class="loginpwd" /></li>
+                <li>
+                    <input name="" type="button" class="loginbtn" value="登录" onclick="login()" /><label><input id="ckbRemember"
+                        name="" type="checkbox" value="" checked="checked" />记住密码</label><!--<label><a href="#">忘记密码？</a></label>--></li>
+            </ul>
+        </div>
+    </div>
+    <div class="loginbm">
+        <span class="login-buttom-txt">Copyright &copy;2008-2015 <a target="_blank" style="color: #ABCAD3;
+            text-decoration: underline;" href="http://www.zshsoft.cn">www.zshsoft.cn</a>
+        </span>
+        <!--版权所有 2013 <a href="http://www.uimaker.com">uimaker.com</a> 仅供学习交流，勿用于任何商业用途-->
+    </div>
+</body>
+</html>

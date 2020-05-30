@@ -1,0 +1,703 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>剪布打包</title>
+    <link href="/Base/JS/easyui_new/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui_new/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var userid;
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+                alert("获取当前用户失败，无法操作！");
+            }
+        });
+        $(function () {
+            $("#txbPerson").combobox("textbox").css("font-size", "18px");
+            var sqlObjPerson = {
+                TableName: "bscDataPerson",
+                Fields: "sCode,sName",
+                SelectAll: "True",
+                Filters: [{
+                    Field: "sJobRole",
+                    ComOprt: "like",
+                    Value: "'%剪货员%'"
+                }
+                ],
+                Sorts: [
+                    {
+                        SortName: "sCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultPerson = SqlGetData(sqlObjPerson);
+            $("#txbPerson").combobox("loadData", resultPerson);
+
+            $("#tabPack").datagrid({
+                fit: true,
+                border: false,
+                columns: [
+                    [
+                        { title: "客户", field: "sCustShortName", width: 250, align: "center" },
+                        { title: "订单号", field: "sOrderNo", width: 120, align: "center" },
+                        { title: "产品型号", field: "sCode", width: 150, align: "center" },
+                        { title: "规格", field: "sElements", width: 100, align: "center" },
+                        { title: "需发量", field: "fSumQty", width: 100, align: "center" },
+                        { title: "剪货量", field: "fCutQty", width: 100, align: "center" },
+                        {
+                            title: "撤销", field: "__cancel", width: 80, align: "center", formatter: function (value, row, index) {
+                                return "<a href='#' onclick='cancelRecord(" + index + ")'>撤销</a>"
+                            }
+                        },
+                        { field: "", hidden: "true" },
+                        { field: "iSDSendDRecNo", hidden: "true" },
+                        { field: "iMMStockQtyRecNo", hidden: "true" },
+                        { field: "iBscDataCustomerRecNo", hidden: "true" }
+                    ]
+                ],
+                rownumbers: true,
+                remoteSort: false/*,
+                toolbar: "#divPackToolbar"*/
+            });
+            $("#tabPackRecord").datagrid({
+                fit: true,
+                border: false,
+                columns: [
+                    [
+                        { title: "包号", field: "sBillNo", width: 150, align: "center" },
+                        { title: "客户", field: "sCustShortNameFull", width: 250, align: "center" },
+                        { title: "产品型号", field: "sCode", width: 150, align: "center" },
+                        { title: "规格", field: "sElementsFull", width: 100, align: "center" },
+                        { title: "需发量", field: "fSumQty", width: 100, align: "center" },
+                        { title: "剪货量", field: "fQty", width: 100, align: "center" },
+                        { title: "剪货人", field: "sUserName", width: 100, align: "center" },
+                        { title: "剪货时间", field: "sInputDate", width: 150, align: "center" }
+                    ]
+                ],
+                rownumbers: true,
+                remoteSort: false,
+                toolbar: "#divPackRecordToolbar"
+            });
+            $("#txbBarcode").focus();
+        })
+
+        function scanBarcode() {
+            if (event.keyCode == 13) {
+                var barcode = $("#txbBarcode").val();
+                if (barcode.length > 0) {
+                    if (barcode.length == 10) {//扫描的是剪货单
+                        var sqlObj = {
+                            TableName: "vwSDSendMD",
+                            Fields: "iRecNo,sCode,sElementsFull,fSumQty,iSdOrderDRecNo,iBscDataMatRecNo,fPrice,fTotal,sOrderNo,sCustShortNameFull,iBscDataCustomerRecNo",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "iStatus",
+                                    ComOprt: "=",
+                                    Value: "4",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "fSumQty-isnull(fOutQty,0)",
+                                    ComOprt: ">",
+                                    Value: "0",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "sSendDetailBarCode",
+                                    ComOprt: "=",
+                                    Value: "'" + barcode + "'"
+                                }
+                            ]
+                        }
+                        var result = SqlGetData(sqlObj);
+                        if (result.length > 0) {
+                            var stockBscDataMatRecNo = $("#hidStockBscDataMatRecNo").val();
+                            if (stockBscDataMatRecNo != "") {
+                                if (stockBscDataMatRecNo != result[0].iBscDataMatRecNo) {
+                                    MessageShow("两次扫描非同一种布", "两次扫描非同一种布");
+                                    PlayVoice("/sound/error.mp3");
+                                    $("#txbBarcode").val("");
+                                    return;
+                                }
+                            }
+                            var allRows = $("#tabPack").datagrid("getRows");
+                            if (allRows.length > 0) {
+                                if (result[0].iBscDataCustomerRecNo != allRows[0].iBscDataCustomerRecNo) {
+                                    MessageShow("只能扫入同一客户的剪货单", "只能扫入同一客户的剪货单");
+                                    PlayVoice("/sound/error.mp3");
+                                    $("#txbBarcode").val("");
+                                    return;
+                                }
+                            }
+                            for (var i = 0; i < allRows.length; i++) {
+                                if (allRows[i].iSDSendDRecNo == result[0].iRecNo) {
+                                    MessageShow("此条码已扫过", "此条码已扫过");
+                                    PlayVoice("/sound/error.mp3");
+                                    $("#txbBarcode").val("");
+                                    return;
+                                }
+                            }
+                            $("#form1").form("load", result[0]);
+                            $("#txbCutQty").val(result[0].fSumQty);
+                        } else {
+                            MessageShow("条码已剪过货或不存在", "条码已剪过货或不存在");
+                            PlayVoice("/sound/error.mp3");
+                        }
+                        $("#txbBarcode").val("");
+                        var sqlObjImage = {
+                            TableName: "FileUplad",
+                            Fields: "*",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "iFormID",
+                                    ComOprt: "=",
+                                    Value: "55577",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "sTableName",
+                                    ComOprt: "=",
+                                    Value: "'bscDataMat'",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "iTableRecNo",
+                                    ComOprt: "=",
+                                    Value: "'" + result[0].iBscDataMatRecNo + "'",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "sImageID",
+                                    ComOprt: "=",
+                                    Value: "'55577_2'"
+                                }
+                            ]
+                        }
+                        var resultImage = SqlGetData(sqlObjImage);
+                        if (resultImage.length > 0) {
+                            var fileName = resultImage[0]["sYearMonth"] + "/55577_bscDataMat_" + result[0].iBscDataMatRecNo + "_55577_2_" + resultImage[0]["sFileName"];
+                            var url = "/Base/imageUpload/images/" + fileName;
+                            $("#img").attr("src", url);
+                        }
+                    }
+                    else if (barcode.length == 8) {//扫描的是库存
+                        var sqlObj = {
+                            TableName: "vwMMStockQty",
+                            Fields: "*",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "sBarCode",
+                                    ComOprt: "=",
+                                    Value: "'" + barcode + "'",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "iBscDataStockMRecNo",
+                                    ComOprt: "=",
+                                    Value: "134"
+                                }
+                            ]
+                        }
+                        var result = SqlGetData(sqlObj);
+                        if (result.length > 0) {
+                            var SendDBscDataMatRecNo = $("#hidSendDBscDataMatRecNo").val();
+                            if (SendDBscDataMatRecNo != "") {
+                                if (SendDBscDataMatRecNo != result[0].iBscDataMatRecNo) {
+                                    MessageShow("两次扫描非同一种布", "两次扫描非同一种布");
+                                    PlayVoice("/sound/error.mp3");
+                                    $("#txbBarcode").val("");
+                                    return;
+                                }
+                            }
+                            $("#form2").form("load", result[0]);
+                        } else {
+                            MessageShow("条码不存在", "条码不存在");
+                            PlayVoice("/sound/error.mp3");
+                        }
+                        $("#txbBarcode").val("");
+                    }
+                }
+            }
+
+        }
+
+        function doCut() {
+            var sPerson = $("#txbPerson").combobox("getValue");
+            if (sPerson == "") {
+                MessageShow("请先选择剪货人", "请先选择剪货人！");
+                return;
+            }
+            var iSdSendDRecNo = $("#hidSendDRecNo").val();
+            var iBscDataMatRecNo = $("#hidSendDBscDataMatRecNo").val();
+            var iStockBscDataMatRecNo = $("#hidStockBscDataMatRecNo").val();
+            var fPrice = $("#hidSendDfPrice").val();
+            var fTotal = $("#hidSendDfTotal").val();
+            var fCutQty = $("#txbCutQty").val();
+            var fCutQty = $("#txbCutQty").val();
+            var iBscDataStockDRecNo = $("#hidStockBscDataStockDRecNo").val();
+            if (iBscDataMatRecNo == "") {
+                MessageShow("请扫描剪货单上的条码", "请扫描剪货单上的条码！");
+                return;
+            }
+            if (iStockBscDataMatRecNo == "") {
+                MessageShow("请扫描布上的条码", "请扫描布上的条码！");
+                return;
+            }
+            if (isNaN(fCutQty)) {
+                MessageShow("请输入剪货米数", "请输入剪货米数！");
+                return;
+            }
+            var appendRow = {
+                iBscDataCustomerRecNo: $("#hidSendDBscDataCustomerRecNo").val(),
+                fCutQty: fCutQty,
+                fSumQty: $("#txbSendQty").val(),
+                sBarCode: $("#txbStockCode").val(),
+                iSDSendDRecNo: iSdSendDRecNo,
+                sCustShortName: $("#txbSendBscDataCustomer").val(),
+                sOrderNo: $("#txbSendOrderNo").val(),
+                sCode: $("#txbSendCode").val(),
+                sElements: $("#txbSendElements").val(),
+                iMMStockQtyRecNo: $("#hidStockRecNo").val()
+            }
+            $("#tabPack").datagrid("appendRow", appendRow);
+            $("#form1").form("clear");
+            $("#form2").form("clear");
+            $("#img").attr("src", "");
+        }
+        function doPack() {
+            var allRows = $("#tabPack").datagrid("getRows");
+            if (allRows.length > 0) {
+                $.messager.confirm("您确认吗？", "您确认将以下" + allRows.length + "卷布打成一个包吗？", function (r) {
+                    if (r) {
+                        var Str = "";
+                        for (var i = 0; i < allRows.length; i++) {
+                            Str += ";" + allRows[i].iSDSendDRecNo + "," + allRows[i].iMMStockQtyRecNo + "," + allRows[i].fCutQty;
+                        }
+                        if (Str != "") {
+                            Str = Str.substr(1);
+                        }
+                        var jsonobj = {
+                            StoreProName: "SpCutBuildMMStockProductOut",
+                            StoreParms: [{
+                                ParmName: "@Str",
+                                Value: Str
+                            }, {
+                                ParmName: "@sUserID",
+                                Value: userid
+                            }]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            MessageShow("错误", result);
+                        }
+                        MessageShow("成功", "成功");
+                        $("#tabPack").datagrid("loadData", []);
+                    }
+                })
+            }
+            else {
+                MessageShow("请先扫描条码", "请先扫描条码");
+            }
+        }
+        function cancelRecord(index) {
+            $.messager.confirm("您确认撤销吗？", "您确认撤销所选择的剪货记录吗？", function (r) {
+                if (r) {
+                    $("#tabPack").datagrid("deleteRow", index);
+                }
+            })
+        }
+
+        function loadMMStockProductOutMD() {
+            var filters = [
+                {
+                    Field: "iStatus",
+                    ComOprt: "=",
+                    Value: "4",
+                    LinkOprt:"and"
+                },
+                {
+                    Field: "sTypeName",
+                    ComOprt: "=",
+                    Value: "'剪货出库'"
+                }
+            ]
+            var dateFrom = $("#txbSearchCutDateFrom").datebox("getValue");
+            var dateTo = $("#txbSearchCutDateTo").datebox("getValue");
+            var sPerson = $("#txbSearchCutPerson").combobox("getValue");
+            var sCode = $("#txbSearchCutPerson").textbox("getValue");
+            if (dateFrom != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "convert(varchar(10),dDate,23)",
+                        ComOprt: ">=",
+                        Value: "'"+dateFrom+"'"
+                    })
+            }
+            if (dateTo != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "convert(varchar(10),dDate,23)",
+                        ComOprt: "<=",
+                        Value: "'"+dateTo+"'"
+                    })
+            }
+            if (sPerson != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sUserID",
+                        ComOprt: "=",
+                        Value: "'"+sPerson+"'"
+                    })
+            }
+            if (sCode != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sCode",
+                        ComOprt: "like",
+                        Value: "'%" + sCode + "%'"
+                    })
+            }
+            var sqlObj = {
+                TableName: "vwMMStockProductOutMD",
+                Fields: "*",
+                SelectAll: "True",
+                Filters: filters,
+                Sorts: [
+                    {
+                        SortName: "dInputDate",
+                        SortOrder:"desc"
+                    },
+                    {
+                        SortName: "iSerial",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var result = SqlGetData(sqlObj);
+            $("#tabPackRecord").datagrid("loadData", result);
+        }
+
+        function checkNum(e) {
+            var re = /^\d+(?=\.{0,1}\d+$|$)/
+            if (e.value != "") {
+                if (!re.test(e.value)) {
+                    //alert("请输入正确的数字");
+                    e.value = "";
+                    e.focus();
+                }
+            }
+
+            e.value = parseFloat(e.value).toFixed(1);
+        }
+        function MessageShow(title, message) {
+            $.messager.show({
+                title: title,
+                msg: "<span style='color:red;font-weight:bold;font-size:18px;'>" + message + "<span>",
+                showType: 'none',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                },
+                timeout: 2000
+            });
+        }
+    </script>
+    <style type="text/css">
+        body {
+            font-family: 微软雅黑;
+            font-size: 18px;
+        }
+
+        table tr td {
+            font-family: 微软雅黑;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        input {
+            font-family: 微软雅黑;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .inputEdit {
+            border: none;
+            border-bottom: solid 1px #909090;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+            height: 35px;
+            color: blue;
+        }
+
+        .inputReadonly {
+            border: none;
+            border-bottom: solid 1px #a0a0a0;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+            height: 35px;
+            width: 150px;
+            background-color: #efefef;
+            color: blue;
+        }
+
+        .button {
+            display: inline-block;
+            outline: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            /*font: 14px/100% 'Microsoft yahei' ,Arial, Helvetica, sans-serif;*/
+            font-size: 20px;
+            padding: .5em 2em .50em;
+            text-shadow: 0 1px 1px rgba(0,0,0,.3);
+            -webkit-border-radius: .5em;
+            -moz-border-radius: .5em;
+            border-radius: .5em;
+            -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            -moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            font-weight: bold;
+        }
+
+            .button:hover {
+                text-decoration: none;
+            }
+
+            .button:active {
+                position: relative;
+                top: 1px;
+            }
+
+        /* orange */
+        .orange {
+            /*color: #fef4e9;*/
+            color: #ffffff;
+            border: solid 1px #da7c0c;
+            background: #f78d1d;
+            background: -webkit-gradient(linear, left top, left bottom, from(#faa51a), to(#f47a20));
+            background: -moz-linear-gradient(top, #faa51a, #f47a20);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#faa51a', endColorstr='#f47a20');
+        }
+
+            .orange:hover {
+                background: #f47c20;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f88e11), to(#f06015));
+                background: -moz-linear-gradient(top, #f88e11, #f06015);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f88e11', endColorstr='#f06015');
+            }
+
+            .orange:active {
+                /*color: #fcd3a5;*/
+                color: #ffffff;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f47a20), to(#faa51a));
+                background: -moz-linear-gradient(top, #f47a20, #faa51a);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f47a20', endColorstr='#faa51a');
+            }
+
+        .button:active {
+            /*text-decoration: none;*/
+            color: red;
+        }
+
+        .combobox-item {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+        }
+    </style>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'north',border:false">
+        <table>
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td>条码</td>
+                            <td>
+                                <input id="txbBarcode" class="inputEdit" onkeydown="scanBarcode()" style="width:300px;" type="text" />
+                            </td>
+                            <td>剪货人</td>
+                            <td>
+                                <input id="txbPerson" class="easyui-combobox" data-options="valueField:'sCode',textField:'sName',required:true" style="width:150px;height:35px; font-size:18px;font-weight:bold;" type="text" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="4">
+                                <form id="form1" method="post">
+                                    <fieldset>
+                                        <legend>剪货单</legend>
+                                        <table>
+                                            <tr>
+                                                <td>
+                                                    产品型号
+                                                </td>
+                                                <td>
+                                                    <input id="txbSendCode" class="inputReadonly" readonly="readonly" name="sCode" type="text" />
+                                                    <input id="hidSendDRecNo" type="hidden" name="iRecNo" />
+                                                    <input id="hidSendDSdOrderDRecNo" type="hidden" name="iSdOrderDRecNo" />
+                                                    <input id="hidSendDBscDataMatRecNo" type="hidden" name="iBscDataMatRecNo" />
+                                                    <input id="hidSendDfPrice" type="hidden" name="fPrice" />
+                                                    <input id="hidSendDfTotal" type="hidden" name="fTotal" />
+                                                    <input id="hidSendDBscDataCustomerRecNo" type="hidden" name="iBscDataCustomerRecNo" />
+                                                </td>
+                                                <td>
+                                                    规格
+                                                </td>
+                                                <td><input id="txbSendElements" class="inputReadonly" readonly="readonly" name="sElementsFull" type="text" /></td>
+                                                <td>
+                                                    数量
+                                                </td>
+                                                <td><input id="txbSendQty" class="inputReadonly" readonly="readonly" name="fSumQty" type="text" /></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    订单号
+                                                </td>
+                                                <td>
+                                                    <input id="txbSendOrderNo" class="inputReadonly" readonly="readonly" name="sOrderNo" type="text" />
+                                                </td>
+                                                <!--<td>
+                                                    剪货单号
+                                                </td>
+                                                <td><input id="txbSendBillNo" class="inputReadonly" name="" type="text" /></td>-->
+                                                <td>
+                                                    客户
+                                                </td>
+                                                <td colspan="3">
+                                                    <input id="txbSendBscDataCustomer" class="inputReadonly" readonly="readonly" name="sCustShortNameFull" style="width:300px" type="text" />
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </fieldset>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="4">
+                                <form id="form2" method="post">
+                                    <fieldset>
+                                        <legend>库存</legend>
+                                        <table>
+                                            <tr>
+                                                <td>
+                                                    产品型号
+                                                </td>
+                                                <td>
+                                                    <input id="txbStockCode" class="inputReadonly" name="sCode" readonly="readonly" type="text" />
+                                                    <input id="hidStockBscDataMatRecNo" name="iBscDataMatRecNo" type="hidden" />
+                                                    <input id="hidStockBscDataStockDRecNo" name="iBscDataStockDRecNo" type="hidden" />
+                                                    <input id="hidStockReelNo" name="sReelNo" type="hidden" />
+                                                    <input id="hidStockBscDataCustomerRecNo" name="iBscDataCustomerRecNo" type="hidden" />
+                                                    <input id="hidStockSdOrderMRecNo" name="iSdOrderMRecNo" type="hidden" />
+                                                    <input id="hidStockSerial" name="sSerial" type="hidden" />
+                                                    <input id="hidStockRecNo" name="iRecNo" type="hidden" />
+                                                </td>
+                                                <td>
+                                                    条码
+                                                </td>
+                                                <td><input id="txbStockBarcode" class="inputReadonly" name="sBarCode" readonly="readonly" type="text" /></td>
+
+                                                <td>批号</td>
+                                                <td><input id="txbStockBatchNo" class="inputReadonly" name="sBatchNo" readonly="readonly" type="text" /></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    米数
+                                                </td>
+                                                <td>
+                                                    <input id="txbStockQty" class="inputReadonly" name="fQty" readonly="readonly" type="text" />
+                                                </td>
+                                                <td>
+                                                    剪货米数
+                                                </td>
+                                                <td>
+                                                    <input id="txbCutQty" class="inputEdit" type="text" style="width:150px; background-color:#FFF3F3;border-bottom:solid 1px #ffA8A8;" onblur="checkNum(this)" onkeyup="this.value=this.value.replace(/[^0-9.]/g,'')" />
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </fieldset>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="text-align:center;">
+                                <a href="#" class="button orange" onclick="doCut()">剪货</a>
+                            </td>
+                            <td colspan="2" style="text-align:center;">
+                                <a href="#" class="button orange" onclick="doPack()">打包</a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <fieldset style="border: solid 1px #e0e0e0; width: 400px; height: 300px;">
+                        <legend>产品图片</legend>
+                        <img id="img" alt="产品大图" style="width:400px;height:300px;" />
+                    </fieldset>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div data-options="region:'center',border:false,split:true">
+        <div class="easyui-tabs" data-options="fit:true,border:false">
+            <div title="打包">
+                <table id="tabPack"></table>
+            </div>
+            <div title="打包记录">
+                <table id="tabPackRecord"></table>
+            </div>
+        </div>
+    </div>
+    <div id="divPackRecordToolbar">
+        <table>
+            <tr>
+                <td>剪货日期从</td>
+                <td>
+                    <input id="txbSearchCutDateFrom" class="easyui-datebox" style="width:120px;" type="text" />
+                </td>
+                <td>至</td>
+                <td>
+                    <input id="txbSearchCutDateTo" class="easyui-datebox" style="width:120px;" type="text" />
+                </td>
+                <td>剪货人</td>
+                <td>
+                    <input id="txbSearchCutPerson" class="easyui-combobox" style="width:120px;" type="text" />
+                </td>
+                <td>产品型号</td>
+                <td>
+                    <input id="txbSearchCode" class="easyui-textbox" style="width:120px;" type="text" />
+                </td>
+                <td>
+                    <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search'" onclick="loadMMStockProductOutMD()">查询</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

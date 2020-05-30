@@ -1,0 +1,632 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/default/easyui.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/mobile.css" />
+    <link rel="stylesheet" type="text/css" href="/Base/JS/easyui/themes/icon.css" />
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/Base/JS/easyui/jquery.easyui.mobile.js"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <style type="text/css">
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 18px;*/ /*border-radius: 5px;*/
+        }
+    </style>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        $(function () {
+            //获取用户名
+            $.ajax(
+                {
+                    url: "/ashx/LoginHandler.ashx",
+                    async: false,
+                    cache: false,
+                    type: "post",
+                    data: { otype: "getcurtuserid" },
+                    success: function (resText) {
+                        userid = resText;
+                    },
+                    error: function (resText) {
+
+                    }
+                }
+            )
+            $("#Text9").combobox(
+                {
+                    valueField: "iRecNo",
+                    textField: "sStockName",
+                    editable: false,
+                    width: 155
+                }
+            )
+            var sqlObjStock = {
+                TableName: "bscDataStockM",
+                Fields: "iRecNo,sStockName",
+                SelectAll: "True",
+                Filters: [
+                        {
+                            Field: "isnull(iShop,0)",
+                            ComOprt: "=",
+                            Value: "1",
+                            LinkOprt: "and"
+                        }
+                        ,
+                        {
+                            Field: "iRecNo",
+                            ComOprt: "in",
+                            Value: "(select iMainRecNo from bscDataStockDUser where sCode='" + userid + "')"
+                        }
+                    ]
+            };
+            var resultStock = SqlGetData(sqlObjStock);
+            if (resultStock.length > 0) {
+                $("#Text9").combobox("loadData", resultStock);
+            }
+            if (getQueryString("usetype") == "add") {
+                $("#divStock").window("open");
+            }
+
+            $($("#Text2").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text3").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text4").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text8").textbox("textbox")).addClass("txbreadonly");
+
+            $($("#Text1").textbox("textbox")).bind("keydown", function (e) {
+                if (e.keyCode == 13) {
+                    scanBarcode();
+                }
+            });
+
+            $("#divList").datalist(
+                {
+                    fit: true,
+                    checkbox: true,
+                    lines: true,
+                    border: false,
+                    textFormatter: function (value, row, index) {
+                        var html = "<div style='font-size:12px;font-weight:bold;'>款号：<span style='color:blue;font-weight:bold'>" + row.sStyleNo + "</span> 颜色：<span style='color:blue;font-weight:bold'>" + row.sColorName + "</span></div>";
+                        html += "<div style='font-size:12px;font-weight:bold;'>尺码：<span style='color:blue;font-weight:bold'>" + row.sSizeName + "</span> 条码：<span style='color:blue;font-weight:bold'>" + row.sbarCode + "</span> 退货：<span style='color:blue;font-weight:bold'>" + (Number(row.iSumQty) < 0 ? "是" : "否") + "</span></div>";
+                        html += "<div style='font-size:12px;font-weight:bold;'>数量：<span style='color:blue;font-weight:bold'>" + row.iSumQty + "</span> 折扣：<span style='color:blue;font-weight:bold'>" + row.fDiscount + "</span>% 金额：<span style='color:blue;font-weight:bold'>" + row.fFinalPrice + "</span></div>";
+                        return html;
+                    },
+                    rowStyler: function () {
+                        return 'height:76px;';
+                    },
+                    toolbar: [
+                    {
+                        iconCls: 'icon-remove',
+                        text: "删除",
+                        handler: function () {
+                            var selectRow = $("#divList").datalist("getSelected");
+                            if (selectRow) {
+                                var index = $("#divList").datalist("getRowIndex", selectRow);
+                                $("#divList").datalist("deleteRow", index);
+                            }
+                        }
+                    }]
+
+                }
+            )
+
+            $($("#Text7").numberbox("textbox")).bind("keydown", function (e) {
+                if (e.keyCode == 13) {
+                    dosave();
+                }
+            })
+
+
+            //银行
+            var bankData = [
+                {
+                    value: "中国工商银行",
+                    text: "中国工商银行"
+                },
+                {
+                    value: "中国农业银行",
+                    text: "中国农业银行"
+                },
+                {
+                    value: "中国银行",
+                    text: "中国银行"
+                },
+                {
+                    value: "中国建设银行",
+                    text: "中国建设银行"
+                },
+                {
+                    value: "交通银行",
+                    text: "交通银行"
+                },
+                {
+                    value: "中国邮政储蓄",
+                    text: "中国邮政储蓄"
+                },
+                {
+                    value: "中国农村信用社",
+                    text: "中国农村信用社"
+                }
+            ];
+            $("#Text27").combobox(
+                    {
+                        valueField: "value",
+                        textField: "text",
+                        editable: true,
+                        data: bankData,
+                        width: 155
+                    }
+            );
+
+            if (getQueryString("usetype") == "modify" || getQueryString("usetype") == "view") {
+                $("#divTabs").tabs("select", 1);
+                $("#divTabs").tabs("disableTab", 0);
+                $("#A1").linkbutton("disable");
+
+                var sqlObjData = {
+                    TableName: "vwMMStoreSaleM_Detail",
+                    Fields: "*",
+                    SelectAll: "True",
+                    Filters: [
+                        {
+                            Field: "iMainRecNo",
+                            ComOprt: "=",
+                            Value: "'" + getQueryString("iRecNo") + "'"
+                        }
+                    ]
+                }
+                var resultData = SqlGetData(sqlObjData);
+                if (resultData.length > 0) {
+                    $("#divList").datalist("loadData", resultData);
+                }
+            }
+        })
+        function scanBarcode() {
+            var sBarcode = $("#Text1").textbox("getValue");
+            var allRows = $("#divList").datalist("getRows");
+            for (var i = 0; i < allRows.length; i++) {
+                if (allRows[i].sbarCode == sBarcode) {
+                    showMessage("条码已存在", "条码已存在！");
+                    return false;
+                }
+            }
+
+            var iRed = $("#Text11").switchbutton("options").checked == true ? 1 : 0;
+            var iBscDataStockMRecNo = $("#Text9").combobox("getValue");
+            var jsonobj = {
+                StoreProName: "SpGetStyleBarcode",
+                StoreParms: [{
+                    ParmName: "@sBarcode",
+                    Value: sBarcode
+                }
+                ,
+                {
+                    ParmName: "@iRed",
+                    Value: iRed
+                }
+                ,
+                {
+                    ParmName: "@iBscDataStockMRecNo",
+                    Value: iBscDataStockMRecNo
+                }
+                ]
+            }
+            var result = SqlStoreProce(jsonobj, true);
+            if (result.Rows.length > 0) {
+                var rowData = result.Rows[0];
+                rowData.fDisCount = 100;
+                $("#form1").form("load", rowData);
+                var fprice = $("#Text5").numberbox("getValue");
+                if (fprice != "") {
+                    if (iRed == 1) {
+                        fprice = Number(fprice) * -1;
+                    }
+                    $("#Text5").numberbox("readonly");
+                    var fdis = $("#Text6").numberbox("getValue");
+                    if (fdis != "") {
+                        var fdisPrice = Number(fprice) * Number(fdis) / 100;
+                        $("#Text7").numberbox("setValue", fdisPrice);
+                    }
+                }
+            }
+            else {
+                showMessage("条码不存在", "条码不存在！");
+            }
+            $("#Text1").textbox("setValue", "");
+        }
+
+        function selectStock() {
+            var iBscDataStockMRecNo = $("#Text9").combobox("getValue");
+            if (iBscDataStockMRecNo == null || iBscDataStockMRecNo == undefined || iBscDataStockMRecNo == "") {
+                showMessage("请选择门店", "请选择一个门店！");
+                return false;
+            }
+            else {
+                $("#divStock").window("close");
+                $($("#Text1").textbox("textbox")).focus();
+                $("#Text8").textbox("setValue", $("#Text9").combobox("getText"));
+            }
+        }
+
+        var iSumQty = 0;
+        var fSumTotal = 0;
+        function dosave() {
+            var iRed = $("#Text11").switchbutton("options").checked == true ? 1 : 0;
+            if ($("#form1").form("validate") == true) {
+                var formData = $("#form1").serializeObject();
+                var appData = {
+                    iStyleMRecNo: formData.ibscDataStyleMRecNo,
+                    iColorRecNo: formData.ibscDataColorRecNo,
+                    sbarCode: formData.sBarcode,
+                    sSizeName: formData.sSizeName,
+                    fPrice: isNaN(Number(formData.fprice)) ? null : Number(formData.fprice),
+                    fDiscount: formData.fDisCount,
+                    fFinalPrice: formData.fDisPrice,
+                    iQty: (iRed == 1 ? -1 : 1),
+                    iSumQty: (iRed == 1 ? -1 : 1),
+                    sStyleNo: formData.sStyleNo,
+                    sColorName: formData.sColorName,
+                    ibscDataCustomerRecNo: formData.ibscDataCustomerRecNo
+                }
+
+                var oldRows = $("#divList").datalist("getRows");
+                var formDataArr = [appData];
+                var allRows = oldRows.concat(formDataArr);
+                $("#divList").datalist("loadData", allRows);
+                oldRows = null;
+                formDataArr = null
+                iSumQty += 1;
+                fSumTotal += Number(formData.fDisPrice);
+                $("#spanSumQty").html(iSumQty);
+                $("#spanSumTotal").html(fSumTotal);
+                $("#form1").form("clear");
+                $($("#Text1").textbox("textbox")).focus();
+                $("#Text8").textbox("setValue", $("#Text9").combobox("getText"));
+            }
+        }
+
+        function zkChange(newValue, oldValue) {
+            var fprice = $("#Text5").numberbox("getValue");
+            if (fprice != "") {
+                var zk = isNaN(Number(newValue)) ? 1 : Number(newValue);
+                var zkj = Number(fprice) * zk / 100;
+                $("#Text7").numberbox("setValue", zkj);
+                $("#Text6").numberbox("setValue", 100);
+            }
+        }
+        function zkjChange(newValue, oldValue) {
+            var fprice = $("#Text5").numberbox("getValue");
+            if (fprice != "") {
+                var zkj = isNaN(Number(newValue)) ? 0 : Number(newValue);
+                if (zkj != 0) {
+                    var zk = zkj / Number(fprice) * 100;
+                    $("#Text6").numberbox("setValue", zk);
+                }
+            }
+        }
+        function hcChange(checked) {
+            var fDisPrice = $("#Text7").numberbox("getValue");
+            if (fDisPrice != "") {
+                if (checked == true) {
+                    if (Number(fDisPrice) > 0) {
+                        $("#Text7").numberbox("setValue", fDisPrice * -1);
+                    }
+                }
+                else {
+                    if (Number(fDisPrice) < 0) {
+                        $("#Text7").numberbox("setValue", fDisPrice * -1);
+                    }
+                }
+            }
+        }
+        function doSubmit(type) {
+            if (type == 0) {
+                var rows = $("#divList").datalist("getRows");
+                if (rows.length > 0) {
+                    $("#divSubmitWindw").window("open");
+                    $("#Text20").numberbox("setValue", fSumTotal);
+                }
+                else {
+                    showMessage("没有明细", "并没有销售哦！");
+                }
+            }
+            else {
+                $.messager.confirm("确认吗？", "您确认提交吗？", function (r) {
+                    if (r) {
+                        var fkData = $("#form2").serializeObject();
+                        var fCard = isNaN(Number(fkData.fCard)) ? 0 : Number(fkData.fCard);
+                        var fMoney = isNaN(Number(fkData.fMoney)) ? 0 : Number(fkData.fMoney);
+                        var fRemit = isNaN(Number(fkData.fRemit)) ? 0 : Number(fkData.fRemit);
+                        var mainInsertStr = "'" + $("#Text9").combobox("getValue") + "','" + userid + "','" + userid + "','" + getNowDate() + " " + getNowTime() + "',";
+                        mainInsertStr += "'" + fCard + "','" + iSumQty + "','" + fSumTotal + "','" + fMoney + "','" + fCard + "','" + fMoney + "','" + fRemit + "','" + 2 + "','" + fkData.sBank + "'";
+
+                        var chidrenInsertStr = "";
+                        var chidrenBarCode = "";
+                        var allRows = $("#divList").datalist("getRows");
+                        var canSubmit = true; //退货和非退货不能同时
+                        var lastSumQty = 0;
+                        for (var i = 0; i < allRows.length; i++) {
+                            if (i > 0) {
+                                if ((lastSumQty > 0 && Number(allRows[i].iSumQty)) < 0 || (lastSumQty < 0 && Number(allRows[i].iSumQty) > 0)) {
+                                    showMessage("销售和退货不能同时", "销售和退货不可同时提交！");
+                                    return false;
+                                }
+                            }
+                            lastSumQty = Number(allRows[i].iSumQty);
+                            chidrenBarCode += allRows[i].sbarCode + "," + allRows[i].iSumQty + "|";
+                            chidrenInsertStr += "'" + allRows[i].iStyleMRecNo + "','" + allRows[i].iColorRecNo + "','" + allRows[i].sbarCode + "','" + allRows[i].sSizeName + "'," + allRows[i].fPrice + "," + allRows[i].fDiscount + "," + allRows[i].fFinalPrice + "," + allRows[i].iQty + "," + allRows[i].iSumQty + ",'" + getNowDate() + " " + getNowTime() + "','" + userid + "','" + allRows[i].ibscDataCustomerRecNo + "'|";
+                        }
+                        if (chidrenBarCode != "") {
+                            chidrenBarCode = chidrenBarCode.substr(0, chidrenBarCode.length - 1);
+                        }
+                        if (chidrenInsertStr != "") {
+                            chidrenInsertStr = chidrenInsertStr.substr(0, chidrenInsertStr.length - 1);
+                        }
+                        var jsonobj = {
+                            StoreProName: "SpMMStoreSaleSubmit",
+                            StoreParms: [{
+                                ParmName: "@iBscDataStockMRecNo",
+                                Value: $("#Text9").combobox("getValue")
+                            },
+                            {
+                                ParmName: "@sUserID",
+                                Value: userid
+                            },
+                            {
+                                ParmName: "@mainInsertStr",
+                                Value: mainInsertStr,
+                                Size: -1
+                            },
+                            {
+                                ParmName: "@childrenInsertStr",
+                                Value: chidrenInsertStr,
+                                Size: -1
+                            },
+                            {
+                                ParmName: "@sBarCodeStr",
+                                Value: chidrenBarCode,
+                                Size: -1
+                            },
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            showMessage("提交出错", result);
+                        }
+                        else {
+                            $.mobile.back();
+                        }
+
+
+                    }
+                })
+            }
+        }
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+
+        function showMessage(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                timeout: 1000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+        $.fn.serializeObject = function () {
+            var o = {};
+            var a = this.serializeArray();
+            $.each(a, function () {
+                if (o[this.name]) {
+                    if (!o[this.name].push) {
+                        o[this.name] = [o[this.name]];
+                    }
+                    o[this.name].push(this.value || '');
+                } else {
+                    o[this.name] = this.value || '';
+                }
+            });
+            return o;
+        };
+        //获取今天日期：格式2015-01-01
+        function getNowDate() {
+            var nowdate = new Date();
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+        //获取当前时时
+        function getNowTime() {
+            var nowdate = new Date();
+            var hour = nowdate.getHours();      //获取当前小时数(0-23)
+            var minute = nowdate.getMinutes();     //获取当前分钟数(0-59)
+            var second = nowdate.getSeconds();
+            return hour + ":" + minute + ":" + second;
+        }
+    </script>
+</head>
+<body>
+    <div id="divTabs" class="easyui-tabs" data-options="fit:true,border:false">
+        <div title="款式扫描">
+            <form id="form1">
+            <div style="display: none;">
+                <input id="Hidden1" name="ibscDataStyleMRecNo" type="hidden" />
+                <input id="Hidden2" name="ibscDataColorRecNo" type="hidden" />
+                <input id="Hidden3" name="ibscDataCustomerRecNo" type="hidden" />
+                <input id="Hidden4" name="sBarcode" type="hidden" />
+            </div>
+            <ul class="m-list">
+                <li>请输入条码
+                    <div class="m-right">
+                        <input id="Text1" type="text" class="easyui-textbox" />
+                    </div>
+                </li>
+                <li>是否退货
+                    <div class="m-right">
+                        <input id="Text11" name="iRed" type="text" class="easyui-switchbutton" data-options="onChange:hcChange" />
+                    </div>
+                </li>
+                <li>门店
+                    <div class="m-right">
+                        <input id="Text8" type="text" class="easyui-textbox" disabled="disabled" />
+                    </div>
+                </li>
+                <li class="m-list-group">款式信息</li>
+                <li>款号
+                    <div class="m-right">
+                        <input id="Text2" type="text" name="sStyleNo" class="easyui-textbox" data-options="readonly:true" />
+                    </div>
+                </li>
+                <li>颜色
+                    <div class="m-right">
+                        <input id="Text3" type="text" name="sColorName" class="easyui-textbox" data-options="readonly:true" />
+                    </div>
+                </li>
+                <li>尺码
+                    <div class="m-right">
+                        <input id="Text4" type="text" name="sSizeName" class="easyui-textbox" data-options="readonly:true" />
+                    </div>
+                </li>
+                <li>零售价
+                    <div class="m-right">
+                        <input id="Text5" type="text" name="fprice" class="easyui-numberbox" data-options="precision:2" />
+                    </div>
+                </li>
+                <li>折扣%
+                    <div class="m-right">
+                        <input id="Text6" type="text" name="fDisCount" class="easyui-numberbox" data-options="precision:0,value:100,required:true,onChange:zkChange" />
+                    </div>
+                </li>
+                <li>折扣价
+                    <div class="m-right">
+                        <input id="Text7" type="text" name="fDisPrice" class="easyui-numberbox" data-options="precision:2,required:true,onChange:zkjChange" />
+                    </div>
+                </li>
+            </ul>
+            </form>
+            <footer>
+            <div class="m-toolbar">
+                <div class="m-title" style="vertical-align:middle;">
+                    <a id="btnSaveAndContinue" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save',plain:false" onclick="dosave()">保存</a>
+                </div>
+            </div>
+        </footer>
+        </div>
+        <div title="款式清单">
+            <div id="divList">
+            </div>
+            <footer>
+            <div class="m-toolbar">
+                <div class="m-left" style=" font-size:12px; vertical-align:middle;">
+                    总数量：<span id="spanSumQty" style='color:red;font-weight:bold;'>0</span>件&nbsp;&nbsp;
+                    总金额：<span id="spanSumTotal" style='color:Red;font-weight:bold;'>0</span>元
+                </div>
+                <div class="m-right" style="vertical-align:middle; padding-right:10px;">
+                    <a id="A1" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save',plain:false" onclick="doSubmit(0)">提交</a>
+                </div>
+            </div>
+        </footer>
+        </div>
+    </div>
+    <div id="divStock" class="easyui-window" style="text-align: center;" data-options="title:'请先选择门店',closed:true,draggable:true,modal:true,maximizable:false,minimizable:false,collapsible:false,width:250,height:120">
+        <table style="width: 99%; margin: auto;">
+            <tr>
+                <td>
+                    门店
+                </td>
+                <td>
+                    <input id="Text9" name="iBscDataStockMRecNo" type="text" />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-ok'" onclick="selectStock()">
+                        确定</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divSubmitWindw" class="easyui-window" data-options="title:'付款',closed:true,draggable:true,modal:true,closable:true,maximizable:false,minimizable:false,collapsible:false,width:250,height:300">
+        <form id="form2">
+        <ul id="ul1" class="m-list">
+            <li>
+                <!--字段标题的位置-->
+                总金额：
+                <div class="m-right">
+                    <input id="Text20" name="fTotal" class="easyui-numberbox" data-options="readonly:true,precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                卡支付：
+                <div class="m-right">
+                    <input id="Text24" name="fCard" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                现金：
+                <div class="m-right">
+                    <input id="Text25" name="fMoney" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                汇款：
+                <div class="m-right">
+                    <input id="Text26" name="fRemit" class="easyui-numberbox" data-options="precision:2"
+                        type="text" />
+                </div>
+            </li>
+            <li>
+                <!--字段标题的位置-->
+                汇款银行
+                <div class="m-right">
+                    <input id="Text27" name="sBank" type="text" />
+                </div>
+            </li>
+        </ul>
+        </form>
+        <footer>
+            <div class="m-toolbar">
+                <div class="m-title" style="vertical-align:middle; padding-right:10px;">
+                    <a id="A3" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save',plain:false" onclick="$('#divSubmitWindw').window('close')">关闭</a>
+                    &nbsp;&nbsp;
+                    <a id="A2" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save',plain:false" onclick="doSubmit(1)">确认提交</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

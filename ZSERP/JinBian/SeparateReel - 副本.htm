@@ -1,0 +1,2455 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>分卷</title>
+    <link href="/Base/JS/easyui/themes/default/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script id="clientEventHandlersJS" language="javascript">
+        //重写mscomm控件的唯一事件处理代码
+        var orText = "";
+        var totalQty = 0.00;
+        var targetTxt = "Text5";
+        var fLastCutQty = 0.00;
+        function MSComm1_OnComm() {
+            var len = 0;
+            //window.alert("happy");  
+            if (MSComm1.CommEvent == 1)//如果是发送事件   
+            {
+                //window.alert("发送成功！"); //这句正常，说明发送成功了   
+            }
+            else if (MSComm1.CommEvent == 2)//如果是接收事件   
+            {
+                if (orText.length < 15) {
+                    orText += MSComm1.Input;
+                }
+                else {
+                    var arr = [];
+                    if (orText.indexOf("M") > -1) {
+                        arr = orText.split("M");
+                    }
+                    else if (orText.indexOf("Y") > -1) {
+                        arr = orText.split("Y");
+                    }
+                    try {
+                        var sTheQty = arr[1];
+                        if (targetTxt == "Text5") {
+                            var fRealQty = (isNaN(Number(sTheQty)) ? 0 : Number(sTheQty)) - (isNaN(Number(fLastCutQty)) ? 0 : Number(fLastCutQty));
+                            $("#" + targetTxt).numberbox("setValue", fRealQty);
+                        }
+                        else {
+                            var fQtyLast = $("#Text5").numberbox("getValue");
+                            var fCutQty = (isNaN(Number(sTheQty)) ? 0 : Number(sTheQty)) - (isNaN(Number(fQtyLast)) ? 0 : Number(fQtyLast));
+                            $("#" + targetTxt).numberbox("setValue", fCutQty);
+                        }
+                        $("#hidQtyO").val(sTheQty);
+                    }
+                    catch (e) {
+
+                    }
+                    orText = "";
+                }
+            }
+            return false;
+        }   
+    </script>
+    <script language="javascript" for="MSComm1" event="OnComm">   
+  <!--
+  // MSComm1控件每遇到OnComm事件就调用MSComm1_OnComm()函数
+            MSComm1_OnComm()
+   //-->   
+    </script>
+    <script language="vbscript" type="text/vbscript" src="mscomm32/VBScript.vbs"></script>
+    <script src="/Base/JS/JSCookie.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+        var userid = "";
+        var btnFlaws = [];
+        var scoreBs = 50;
+        var iSelectRecNo = 0;
+        var theLastPartQty = 0.00;
+        var iPrintMoudleRecNo = 100;
+        var iPrintMoudleRecNo2 = 0;
+        var iPrintCount = 1;
+        var iLastSDOrderDDVatNoDReelNoRecNo = 0;
+        var sUnitID = "M";
+        var theLastNumTextboxID = null;
+        var lastMatCode = undefined;
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+                alert("获取当前用户失败，无法操作！");
+            }
+        });
+        var isPortOpen = false;
+        $(function () {
+            if (userid != "master" && userid != "8888") {
+                $("#btnSetPort").hide();
+            }
+            $("#txbNowDate").datebox({ value: getNowDate() });
+            $($("#Text5").textbox("textbox")).bind("focus", function () {
+                theLastPartQty = isNaN(Number(this.value)) ? 0 : Number(this.value);
+                ClosePort();
+            })
+            $($("#Text5").textbox("textbox")).bind("blur", function () {
+                var thePartQty = isNaN(Number(this.value)) ? 0 : Number(this.value);
+                if (thePartQty != theLastPartQty) {
+                    $("#hidQtyO").val(thePartQty);
+                }
+                else {
+                    OpenPort();
+                }
+            })
+            $($("#txbOrderNo").textbox("textbox")).bind("keydown", BarcodeScan);
+            $($("#txbOrderNo").textbox("textbox")).focus();
+            $.messager.progress({ title: "正在连接验布机，请稍候..." });
+            setReadOnly();
+            $("#txbNowDate").datebox("setValue", getNowDate());
+            $("#tableSdOrderDD").datagrid({
+                fit: true,
+                //border: false,
+                remoteSort: false,
+                loadFilter: pagerFilter,
+                rowStyler: function (index, row) {
+                    return "height:30px;";
+                },
+                columns: [
+                    [
+                    { title: "订单号", field: "sOrderNo", width: 100, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "客户订单号", field: "sContractNo", width: 100, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+
+                    { title: "缸号", field: "sVatNo", width: 80, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "颜色", field: "sColorFull", width: 100, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "花型", field: "sFlowerType", width: 100, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "已验<br />卷数", field: "iCurtPartReelCount", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "当前<br />卷号", field: "sCurtPartReelNo", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "预计<br />卷数", field: "iPlanPartReelCount", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+					{ title: "产品", field: "sCodeFull", width: 100, align: "center", styler: function () {
+					    return "font-size:16px;";
+					}
+					},
+                    { title: "卷号<br />生成规则", field: "sReelNoBuildName", width: 80, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "卷号<br />前缀", field: "sReelNoPre", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "卷号<br />流水规则", field: "sReelNoFlag", width: 80, align: "center", hidden: true, styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "卷号<br />流水规则", field: "sReelNoFlagName", width: 80, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "幅宽", field: "fProductWidth", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "克重", field: "fProductWeight", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "米数", field: "fQty", width: 60, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                    { title: "客户简称", field: "sCustFull", width: 140, align: "center", styler: function () {
+                        return "font-size:16px;";
+                    }
+                    },
+                     { title: "签订日期", field: "dDate1", width: 80, align: "center", styler: function () {
+                         return "font-size:16px;";
+                     }
+                     },
+                    { field: "iRecNo", hidden: true }
+                    ]
+                ],
+                singleSelect: true,
+                onDblClickRow: function () {
+                    selectSDOrderDD();
+                },
+                pageSize: 12,
+                pageList: [12, 24, 50, 100],
+                pagination: true
+            }
+            )
+            //LoadSDOrderDD();
+            var sqlObjBtn = {
+                TableName: "bscDataClass",
+                Fields: "sClassID,sClassName",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "stype",
+                        ComOprt: "=",
+                        Value: "'flaw'"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "sClassID",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultBtn = SqlGetData(sqlObjBtn);
+            btnFlaws = resultBtn;
+            for (var i = 0; i < resultBtn.length; i++) {
+
+                var btn = $("<input type='button' id='btnFlaw_" + i + "' value='" + resultBtn[i].sClassName + "' class='btnBiggerFix' onclick='openFlawWindow(this)' />");
+                $("#tdBtn" + (i + 1).toString()).append(btn);
+            }
+
+            var sqlObjMachine = {
+                TableName: "bscDataMachine",
+                Fields: "sMachineCode",
+                SelectAll: "True",
+                Sorts: [
+                    {
+                        SortName: "sMachineCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultMachine = SqlGetData(sqlObjMachine);
+            $("#txbMachine").combobox("loadData", resultMachine);
+            var sMachineID = getCookie("machineID");
+            $("#txbMachine").combobox("setValue", sMachineID);
+            var sqlObjCheckPerson = {
+                TableName: "bscDataPerson",
+                Fields: "sCode,sName",
+                SelectAll: "True",
+                Sorts: [
+                    {
+                        SortName: "sCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultCheckPerson = SqlGetData(sqlObjCheckPerson);
+            $("#txbCheckPerson").combobox("loadData", resultCheckPerson);
+            $("#txbCheckPerson").combobox("setValue", userid);
+            $("#tabCdRec").datagrid({
+                fit: true,
+                remoteSort: false,
+                showFooter: true,
+                rowStyler: function (index, row) {
+                    if (row.iAbandon == "1") {
+                        return "height:30px;color:red";
+                    }
+                    else {
+                        return "height:30px;";
+                    }
+                },
+                columns: [
+                    [
+                    { title: "序号", field: "iSerial", width: 30, align: "center", styler: function () {
+                        return "font-size:14px;";
+                    }
+                    },
+                    { title: "原因", field: "sReason", width: 60, align: "center", styler: function () {
+                        return "font-size:14px;";
+                    }
+                    },
+                    { title: "位置", field: "fPostion", width: 60, align: "center", styler: function () {
+                        return "font-size:14px;";
+                    }
+                    },
+                    { title: "扣米数", field: "fDeductQty", width: 60, align: "center", styler: function () {
+                        return "font-size:14px;";
+                    }
+                    },
+                    { field: "iRecNo", hidden: true }
+                    ]
+                ],
+                singleSelect: true,
+                onDblClickRow: function () {
+                    //selectSDOrderDD();
+                },
+                onLoadSuccess: function (data) {
+                    var allRows = data.rows;
+                    var sumDeQty = 0;
+                    for (var i = 0; i < allRows.length; i++) {
+                        var sReason = allRows[i].sReason;
+                        if (sReason.split("-")[0] != "11") {
+                            sumDeQty += (isNaN(Number(allRows[i].fDeductQty)) ? 0 : Number(allRows[i].fDeductQty));
+                        }
+                    }
+                    //$("#Text6").numberbox("setValue", sumDeQty);
+                    $("#tabCdRec").datagrid("reloadFooter", [{ fDeductQty: sumDeQty}]);
+                }
+            }
+            )
+            var sqlObjCheckScroeBs = {
+                TableName: "bscDataListD",
+                Fields: "top 1 sName",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "=",
+                        Value: "'scoreBS'"
+                    }
+                ]
+            }
+            var resultCheckScroeBs = SqlGetData(sqlObjCheckScroeBs);
+            if (resultCheckScroeBs.length > 0) {
+                scoreBs = parseFloat(resultCheckScroeBs[0].sName);
+            }
+
+
+            var objStr = "<object classid='clsid:648A5600-2C6E-101B-82B6-000000000014' id='MSComm1' codebase='MSCOMM32.OCX' type='application/x-oleobject' style='left: 54px; top: 14px'>";
+            var portCookie = getCookie("mscomm32_port");
+
+            if (portCookie != null) {
+                objStr += "<param name='CommPort' value='" + portCookie + "'>";
+            }
+            else {
+                objStr += "<param name='CommPort value='4'>";
+            }
+            objStr += "<param name='DTREnable' value='1'><param name='Handshaking' value='0'><param name='InBufferSize' value='1024'><param name='InputLen' value='0'><param name='NullDiscard' value='0'><param name='OutBufferSize' value='512'>" +
+        "<param name='ParityReplace' value='?'><param name='RThreshold' value='1'><param name='RTSEnable' value='1'><param name='SThreshold' value='2'><param name='EOFEnable' value='0'><param name='InputMode' value='0'>" +
+        "<param name='DataBits' value='8'><param name='StopBits' value='1'><param name='BaudRate' value='9600'><param name='Settings' value='9600,N,8,1'>";
+            var object = $(objStr);
+            $("body").append(object);
+            setTimeout(function () {
+                try {
+                    OpenPort();
+                    $.messager.progress("close");
+                }
+                catch (e) {
+                    alert("验布机连接失败！");
+                    $.messager.progress("close");
+                }
+            }, 1000);
+            setTimeout(function () {
+                if (isPortOpen == false) {
+                    alert("验布机连接失败！");
+                }
+            }, 2000);
+            $(".btnMeterAdjust").bind("click", function () {
+                ClosePort();
+                var value = this.value;
+                if (value == "+") {
+                    var meter = isNaN(Number($("#Text5").numberbox("getValue"))) ? 0 : Number($("#Text5").numberbox("getValue"));
+                    meter = meter + 0.1;
+                    $("#Text5").numberbox("setValue", meter);
+                }
+                else {
+                    var meter = isNaN(Number($("#Text5").numberbox("getValue"))) ? 0 : Number($("#Text5").numberbox("getValue"));
+                    if (meter > 0) {
+                        meter = meter - 0.1;
+                        $("#Text5").numberbox("setValue", meter);
+                    }
+                }
+            })
+            $(".btnPositionAdjust").bind("click", function () {
+                //ClosePort();
+                var value = this.value;
+                if (value == "+") {
+                    var meter = isNaN(Number($("#txbFlawPosition").numberbox("getValue"))) ? 0 : Number($("#txbFlawPosition").numberbox("getValue"));
+                    meter = meter + 0.1;
+                    $("#txbFlawPosition").numberbox("setValue", meter);
+                }
+                else {
+                    var meter = isNaN(Number($("#txbFlawPosition").numberbox("getValue"))) ? 0 : Number($("#txbFlawPosition").numberbox("getValue"));
+                    if (meter > 0) {
+                        meter = meter - 0.1;
+                        $("#txbFlawPosition").numberbox("setValue", meter);
+                    }
+                }
+            })
+            $(".btnDeAdjust").bind("click", function () {
+                //ClosePort();
+                var value = this.value;
+                if (value == "+") {
+                    var meter = isNaN(Number($("#txbFlawDeMeter").numberbox("getValue"))) ? 0 : Number($("#txbFlawDeMeter").numberbox("getValue"));
+                    meter = meter + 0.1;
+                    $("#txbFlawDeMeter").numberbox("setValue", meter);
+                }
+                else {
+                    var meter = isNaN(Number($("#txbFlawDeMeter").numberbox("getValue"))) ? 0 : Number($("#txbFlawDeMeter").numberbox("getValue"));
+                    if (meter > 0) {
+                        meter = meter - 0.1;
+                        $("#txbFlawDeMeter").numberbox("setValue", meter);
+                    }
+                }
+            })
+            var sqlObjYield = {
+                TableName: "SDOrderDDVatNoDReelNo",
+                Fields: "SUM(fRealQty) AS fQty",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "convert(varchar(10),dInputDate,23)",
+                        ComOprt: "=",
+                        Value: "'" + getNowDate() + "'",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "sMachineID",
+                        ComOprt: "=",
+                        Value: "'" + sMachineID + "'",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "sCheckPersonID",
+                        ComOprt: "=",
+                        Value: "'" + userid + "'",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "isnull(iCutSample,0)",
+                        ComOprt: "=",
+                        Value: "0"
+                    }
+                ]
+            }
+            var resultYield = SqlGetData(sqlObjYield);
+            if (resultYield.length > 0) {
+                $("#txbTodayTotal").numberbox("setValue", resultYield[0].fQty);
+                totalQty = isNaN(Number(resultYield[0].fQty)) ? 0 : Number(resultYield[0].fQty);
+            }
+            $($("#txbSearchOrderNo").textbox("textbox")).bind("focus", function () {
+                this.value = "";
+            });
+            $($("#txbSearchCode").textbox("textbox")).bind("focus", function () {
+                this.value = "";
+            });
+            $($("#txbSearchVatNo").textbox("textbox")).bind("focus", function () {
+                this.value = "";
+            });
+        })
+
+        function setReadOnly() {
+            $($("#Text1").numberbox("textbox")).addClass("txbreadonly");
+            $($("#Text2").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text3").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text4").textbox("textbox")).addClass("txbred");
+            $($("#Text5").textbox("textbox")).addClass("txbred");
+            $($("#Text8").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text7").textbox("textbox")).addClass("txbreadonly");
+
+            $($("#Text9").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text10").textbox("textbox")).addClass("txbreadonly");
+            $($("#txbNowDate").datebox("textbox")).addClass("txbreadonly");
+            $($("#Text13").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text14").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text15").textbox("textbox")).addClass("txbreadonly");
+            $($("#Text11").numberbox("textbox")).addClass("txbreadonly");
+            $($("#Text12").numberbox("textbox")).addClass("txbreadonly");
+            //$($("#Text17").numberbox("textbox")).addClass("txbreadonly");
+        }
+
+        function LoadSDOrderDD() {
+            var filters = [
+                {
+                    Field: " ",
+                    ComOprt: "not exists",
+                    Value: "(select 1 from SDOrderDDVatNo as b where isnull(b.dEndTime,'2299-12-31')<>'2299-12-31' and a.iSDContractMRecNo=b.iSDOrderMRecNo and a.iSDContractDRecNo=b.iSDOrderDRecNo and a.sVatNo=b.sVatNo)"
+                }
+            ];
+            var sOrderNo = $("#txbSearchOrderNo").textbox("getValue");
+            var sCode = $("#txbSearchCode").textbox("getValue");
+            var sVatNo = $("#txbSearchVatNo").textbox("getValue");
+            if (sOrderNo != "") {
+                if (filters.length > 0) {
+                    filters[filters.length - 1].LinkOprt = "and";
+                }
+                filters.push(
+                    {
+                        Field: "sContractNo",
+                        ComOprt: "like",
+                        Value: "'%" + sOrderNo + "%'"
+                    }
+                )
+            }
+            if (sCode != "") {
+                if (filters.length > 0) {
+                    filters[filters.length - 1].LinkOprt = "and";
+                }
+                filters.push(
+                    {
+                        Field: "sCodeFull",
+                        ComOprt: "like",
+                        Value: "'%" + sCode + "%'"
+                    }
+                )
+            }
+            if (sVatNo != "") {
+                if (filters.length > 0) {
+                    filters[filters.length - 1].LinkOprt = "and";
+                }
+                filters.push(
+                    {
+                        Field: "sVatNo",
+                        ComOprt: "like",
+                        Value: "'%" + sVatNo + "%'"
+                    }
+                )
+            }
+            var sqlObj = {
+                TableName: "vwSDOrderDDMD as a",
+                Fields: " top 15 *",
+                SelectAll: "True",
+                Filters: filters,
+                Sorts: [
+                        {
+                            SortName: "dDate1",
+                            SortOrder: "asc"
+                        },
+                        {
+                            SortName: "sOrderNo",
+                            SortOrder: "asc"
+                        },
+                        {
+                            SortName: "iRecNo",
+                            SortOrder: "asc"
+                        },
+                         {
+                             SortName: "iSerial",
+                             SortOrder: "asc"
+                         }
+                    ]
+            }
+            var result = SqlGetData(sqlObj);
+            $("#tableSdOrderDD").datagrid("loadData", { total: 0, rows: [] });
+            $("#tableSdOrderDD").datagrid("loadData", { total: result.length, rows: result });
+        }
+
+        function openOrderWindow() {
+            //LoadSDOrderDD();
+            $("#divSdOrderDD").window("open");
+            var allRows = $("#tableSdOrderDD").datagrid("getRows");
+            for (var i = 0; i < allRows.length; i++) {
+                if (iSelectRecNo == allRows[i].iRecNo) {
+                    $("#tableSdOrderDD").datagrid("selectRow", i);
+                    break;
+                }
+            }
+        }
+
+        function selectSDOrderDD() {
+            var selectRow = $("#tableSdOrderDD").datagrid("getSelected");
+            if (selectRow) {
+                iSelectRecNo = selectRow.iRecNo;
+                iPrintMoudleRecNo = selectRow.iPrintMoudleRecNo;
+                iPrintMoudleRecNo2 = selectRow.iPrintMoudleRecNo2;
+                iPrintCount = isNaN(Number(selectRow.iPrintCount)) ? 1 : Number(selectRow.iPrintCount);
+                sUnitID = selectRow.sUnitID;
+                //根据订单设置码表单位
+                if (sUnitID == "M") {
+                    //                    SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x4D");
+                    SendPortMessage("0x4D");
+                }
+                else if (sUnitID == "Y") {
+                    //                    SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x59");
+                    SendPortMessage("0x59");
+                }
+                $("#form1").form("load", selectRow);
+                var codeFull = selectRow.sCodeFull;
+                if (codeFull != lastMatCode) {
+                    var sMachineID = getCookie("machineID");
+                    var sCode = selectRow.sCode;
+                    var sqlObjMat = {
+                        TableName: "bscDataMatDMachineParam",
+                        Fields: "sParams",
+                        SelectAll: "True",
+                        Filters: [
+                            {
+                                Field: "iMainRecNo",
+                                ComOprt: "=",
+                                Value: "(select top 1 iRecNo from bscDataMat where sCode='" + sCode + "')",
+                                LinkOprt: "and"
+                            },
+                            {
+                                Field: "sMachineID",
+                                ComOprt: "=",
+                                Value: "'" + sMachineID + "'"
+                            }
+                        ]
+                    }
+                    var resultMatParam = SqlGetData(sqlObjMat);
+                    if (resultMatParam.length > 0) {
+                        $.messager.alert("请设置机台参数", "<span style='font-size:20px;font-weight:bold;color:blue;'>请设置机台参数：</span><span style='font-size:20px;font-weight:bold;color:red;'>" + resultMatParam[0].sParams + "</span>");
+                    }
+                    lastMatCode = codeFull;
+                }
+
+
+                var sReelNoFlag = selectRow.sReelNoFlag ? selectRow.sReelNoFlag : "0";
+                var theReelNo = "";
+                var sReelNoPre = selectRow.sReelNoPre == null || selectRow.sReelNoPre == undefined ? "" : selectRow.sReelNoPre;
+                if (selectRow.iCurtPartReelCount == 0 || selectRow.iCurtPartReelCount == null || selectRow.iCurtPartReelCount == undefined) {
+                    if (sReelNoFlag != "0") {
+                        theReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + 1).toString(), sReelNoFlag.length);
+                    }
+                    else {
+                        theReelNo = sReelNoPre + "1";
+                    }
+                }
+                else {
+                    var nextPartReelCount = parseInt(selectRow.iCurtPartReelCount) + 1;
+                    if (sReelNoFlag != "0") {
+                        theReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + nextPartReelCount).toString(), sReelNoFlag.length);
+                    }
+                    else {
+                        theReelNo = sReelNoPre + nextPartReelCount.toString();
+                    }
+                }
+                $("#Text9").textbox("setValue", theReelNo);
+                $("#txaRemark").val(selectRow.sCustomerAskFull);
+                $("#txbOrderNo").textbox("setValue", selectRow.sOrderNo);
+            }
+            else {
+                alert("请选择一个订单");
+            }
+            $("#divSdOrderDD").window("close");
+            var sqlObjMaxReelNo = {
+                TableName: "SDOrderDDVatNoDReelNo",
+                Fields: "max(iRecNo) as iRecNo",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iSDOrderMRecNo",
+                        ComOprt: "=",
+                        Value: "'" + selectRow.iSDOrderMRecNo + "'",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "iSDOrderDRecNo",
+                        ComOprt: "=",
+                        Value: "'" + selectRow.iSDOrderDRecNo + "'"
+                    }
+                ]
+            }
+            var resultMaxRecNo = SqlGetData(sqlObjMaxReelNo);
+            if (resultMaxRecNo.length > 0) {
+                iLastSDOrderDDVatNoDReelNoRecNo = resultMaxRecNo[0].iRecNo;
+            }
+        }
+
+        function jsleft(lefts, leftn) {
+            var sl = lefts;
+            sl = sl.substring(0, leftn);
+            return sl;
+        }
+        function jsright(rights, rightn) {
+            var sr = rights;
+            sr = sr.substring(sr.length - rightn, sr.length);
+            return sr;
+        }
+        function getNowDate() {
+            var nowdate = new Date();
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+        function openFlawWindow(obj) {
+            var btnID = obj.id;
+            var index = btnID.indexOf("_");
+            var intID = parseInt(btnID.substr(index + 1, btnID.length - index - 1));
+            var theFlaw = btnFlaws[intID];
+            if (theFlaw.sClassID == "11") {
+                targetTxt = "txbFlawDeMeter";
+                $("#tdDe").html("剪米数");
+            }
+            else {
+                $("#tdDe").html("扣米数");
+            }
+            //var selectMainRow = $("#tableSdOrderDD").datagrid("getSelected");
+            if (iSelectRecNo == 0) {
+                alert("请先选择订单！");
+                return false;
+            }
+            var sCheckPersonID = $("#txbCheckPerson").combobox("getValue");
+            if (sCheckPersonID == "" || sCheckPersonID == null || sCheckPersonID == undefined) {
+                alert("请先选择检验员！");
+                return false;
+            }
+            $("#form2").form("reset");
+            $("#txbFlawDeMeter").numberbox("setValue", "0.1");
+            $("#txbFlawDeMeter").numberbox("setValue", "0.2");
+            //            var sqlObjLastFlaw = {
+            //                TableName: "SDOrderDDVatNoDReelNoFlawD as a",
+            //                Fields: "TOP 1 fDeductQty",
+            //                SelectAll: "True",
+            //                Filters: [
+            //                    {
+            //                        Field: "iMainRecNo",
+            //                        ComOprt: "in",
+            //                        Value: "(select b.iRecNo from sdorderdd as b,SDOrderDDVatNoDReelNo as c where b.iRecNo='" + iSelectRecNo + "' and b.iRecNo=c.iSDOrderDDRecNo and b.sVatNo=c.sVatNo)",
+            //                        LinkOprt: "and"
+            //                    },
+            //                    {
+            //                        Field: "isnull(iTmp,0)",
+            //                        ComOprt: "<>",
+            //                        Value: "1",
+            //                        LinkOprt: "and"
+            //                    },
+            //                    {
+            //                        Field: "isnull(iAbandon,0)",
+            //                        ComOprt: "<>",
+            //                        Value: "1"
+            //                    }
+            //                ],
+            //                Sorts: [
+            //                    {
+            //                        SortName: "iRecNo",
+            //                        SortOrder: "desc"
+            //                    }
+            //                ]
+            //            }
+            //            var resultFlaw = SqlGetData(sqlObjLastFlaw);
+            //            if (resultFlaw.length > 0) {
+            //                $("#txbFlawDeMeter").numberbox("setValue", resultFlaw[0].fDeductQty);
+            //            }
+            var sqlObjClass = {
+                TableName: "bscDataClass",
+                Fields: "sFlawDefaultQty",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "=",
+                        Value: "'" + theFlaw.sClassID + "'",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "sType",
+                        ComOprt: "=",
+                        Value: "'flaw'"
+                    }
+                ]
+            }
+            var resultClass = SqlGetData(sqlObjClass);
+            if (resultClass.length > 0) {
+                $("#txbFlawDeMeter").numberbox("setValue", "0.1");
+                $("#txbFlawDeMeter").numberbox("setValue", resultClass[0].sFlawDefaultQty);
+            }
+            if (theFlaw.sClassID == "11") {
+                $("#txbFlawDeMeter").numberbox("setValue", 0);
+            }
+
+            $("#divFlaw").window("open");
+
+            $("#txbFlawReason").textbox("setValue", theFlaw.sClassID + '-' + theFlaw.sClassName);
+            $("#txbFlawPosition").numberbox("setValue", $("#Text5").numberbox("getValue"));
+            var iNextRecNo = getChildID("SDOrderDDFlawD");
+            $("#txbSDOrderDDFlawDRecNo").val(iNextRecNo);
+
+        }
+        function flawConfirm() {
+            if ($("#form2").form("validate")) {
+                var sCheckPersonID = $("#txbCheckPerson").combobox("getValue");
+                if (sCheckPersonID == "" || sCheckPersonID == null || sCheckPersonID == undefined) {
+                    alert("请先选择检验员！");
+                    return false;
+                }
+                //var selectMainRow = $("#tableSdOrderDD").datagrid("getSelected");
+                if (iSelectRecNo > 0) {
+                    var iRecNo = $("#txbSDOrderDDFlawDRecNo").val();
+                    var iMainRecNo = iSelectRecNo;
+                    var aRows = $("#tabCdRec").datagrid("getRows");
+                    var iSerial = aRows.length + 1;
+                    var sReason = $("#txbFlawReason").textbox("getValue");
+                    var fPosition = $("#txbFlawPosition").numberbox("getValue");
+                    var fScore = isNaN(Number($("#txbFlawScroe").numberbox("getValue"))) ? 0 : Number($("#txbFlawScroe").numberbox("getValue"));
+                    var fDeductQty = isNaN(Number($("#txbFlawDeMeter").numberbox("getValue"))) ? 0 : Number($("#txbFlawDeMeter").numberbox("getValue"));
+                    var jsonobj = {
+                        StoreProName: "SpSDOrderDDVatNoDReelNoFlawDAdd",
+                        StoreParms: [{
+                            ParmName: "@iRecNo",
+                            Value: iRecNo
+                        },
+                        {
+                            ParmName: "@iSerial",
+                            Value: iSerial
+                        },
+                        {
+                            ParmName: "@sReason",
+                            Value: sReason
+                        },
+                        {
+                            ParmName: "@fPosition",
+                            Value: fPosition
+                        },
+                        {
+                            ParmName: "@fScore",
+                            Value: fScore
+                        },
+                        {
+                            ParmName: "@fDeductQty",
+                            Value: fDeductQty
+                        },
+                        {
+                            ParmName: "@sCheckPersonID",
+                            Value: sCheckPersonID
+                        }
+                        ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                    if (result != "1") {
+                        alert(result);
+                    }
+                    else {
+                        var appRow = {
+                            iRecNo: iRecNo,
+                            iSerial: iSerial,
+                            sReason: sReason,
+                            fPostion: fPosition,
+                            fDeductQty: fDeductQty
+                        }
+                        $("#tabCdRec").datagrid("appendRow", appRow);
+                        $("#divFlaw").window("close");
+                        var allRows = $("#tabCdRec").datagrid("getRows");
+                        var sumDeQty = 0;
+                        for (var i = 0; i < allRows.length; i++) {
+                            var sReason = allRows[i].sReason;
+                            if (sReason.split("-")[0] != "11") {
+                                sumDeQty += (isNaN(Number(allRows[i].fDeductQty)) ? 0 : Number(allRows[i].fDeductQty));
+                            }
+                        }
+                        $("#Text6").numberbox("setValue", sumDeQty);
+                        $("#tabCdRec").datagrid("reloadFooter", [{ fDeductQty: sumDeQty}]);
+                        if (sReason.substr(0, 2) == "11") {
+                            fLastCutQty = fDeductQty;
+                            targetTxt = "Text5";
+                        }
+                    }
+                }
+                else {
+                    alert("请先选择订单！");
+                    return false;
+                }
+            }
+        }
+        function partQtyChange(newValue, oldValue) {
+            var fDeductQty = $("#Text6").numberbox("getValue");
+            var fRealQty = (isNaN(Number(newValue)) ? 0 : Number(newValue)) - (isNaN(Number(fDeductQty)) ? 0 : Number(fDeductQty));
+            $("#Text7").numberbox("setValue", fRealQty);
+
+            //计算重量
+            //var fWeight;
+            var fProductWidth = isNaN(Number($("#fProductWidth").val())) ? 0 : Number($("#fProductWidth").val());
+            var fProductWeight = isNaN(Number($("#fProductWeight").val())) ? 0 : Number($("#fProductWeight").val());
+            var fWeight = fProductWidth * fProductWeight / 1000 / 100 * (isNaN(Number(newValue)) ? 0 : Number(newValue));
+            $("#Text4").numberbox("setValue", fWeight);
+        }
+        function DeductQtyChange(newValue, oldValue) {
+            var fPartQty = $("#Text5").numberbox("getValue");
+            var fRealQty = (isNaN(Number(fPartQty)) ? 0 : Number(fPartQty)) - (isNaN(Number(newValue)) ? 0 : Number(newValue));
+            $("#Text7").numberbox("setValue", fRealQty);
+        }
+        function flawDeMeterChange(newValue, oldValue) {
+            var aaa = $("#tdDe").html();
+            if (aaa != "剪米数") {
+                var flawDeMeter = $("#txbFlawDeMeter").numberbox("getValue");
+                var flawScroe = (isNaN(Number(flawDeMeter)) ? 0 : Number(flawDeMeter)) * scoreBs;
+                $("#txbFlawScroe").numberbox("setValue", flawScroe);
+            }
+        }
+        function getChildID(tablename) {
+            var jsonobj = {
+                StoreProName: "SpGetIden",
+                StoreParms: [{
+                    ParmName: "@sTableName",
+                    Value: tablename
+                }]
+            }
+            var result = SqlStoreProce(jsonobj);
+            if (result && result.length > 0 && result != "-1") {
+                return result;
+            }
+            else {
+                return "-1";
+            }
+        }
+        //type=1删除,2作废,3清空
+        function deleteOrAbandonOrClear(type) {
+            if (type == 1 || type == 2) {
+                var message = type == 1 ? "删除" : "作废";
+                var selectRow = $("#tabCdRec").datagrid("getSelected");
+                if (selectRow) {
+                    $.messager.confirm("您确定吗？", "您确定要" + message + "所选行吗？", function (r) {
+                        if (r) {
+                            var jsonobj = {
+                                StoreProName: "SpSDOrderDDVatNoDReelNoFlawDDeleteOrAbandon",
+                                StoreParms: [{
+                                    ParmName: "@iRecNo",
+                                    Value: selectRow.iRecNo
+                                },
+                                {
+                                    ParmName: "@sRecNoStr",
+                                    Value: ""
+                                },
+                                {
+                                    ParmName: "@iType",
+                                    Value: type
+                                }
+                            ]
+                            }
+                            var result = SqlStoreProce(jsonobj);
+                            if (result != "1") {
+                                alert(result);
+                            }
+                            else {
+                                if (type == 1) {
+                                    $("#tabCdRec").datagrid("deleteRow", $("#tabCdRec").datagrid("getRowIndex", selectRow));
+                                }
+                                else {
+                                    $("#tabCdRec").datagrid("updateRow", { index: $("#tabCdRec").datagrid("getRowIndex", selectRow), row: { iAbandon: 1} });
+                                }
+                                if (selectRow.sReason.substr(0, 2) != "11") {
+                                    var fDeductQty = isNaN(Number(selectRow.fDeductQty)) ? 0 : Number(selectRow.fDeductQty);
+                                    var fDeductQtySum = isNaN(Number($("#Text6").numberbox("getValue"))) ? 0 : Number($("#Text6").numberbox("getValue"));
+                                    $("#Text6").numberbox("setValue", fDeductQtySum - fDeductQty);
+                                }
+                            }
+                        }
+                    })
+                }
+                else {
+                    alert("请选择一行");
+                }
+            }
+            else {
+                var allRows = $("#tabCdRec").datagrid("getRows");
+                if (allRows.length > 0) {
+                    var iMainRecNo = iSelectRecNo;
+                    $.messager.confirm("您确定吗？", "您确定要清空所有疵点吗？清空后不可恢复", function (r) {
+                        if (r) {
+                            var iRecNoStr = "";
+                            for (var i = 0; i < allRows.length; i++) {
+                                iRecNoStr += allRows[i].iRecNo + ",";
+                            }
+                            if (iRecNoStr != "") {
+                                iRecNoStr = iRecNoStr.substr(0, iRecNoStr.length - 1);
+                            }
+                            var jsonobj = {
+                                StoreProName: "SpSDOrderDDVatNoDReelNoFlawDDeleteOrAbandon",
+                                StoreParms: [{
+                                    ParmName: "@iRecNo",
+                                    Value: 0
+                                },
+                            {
+                                ParmName: "@sRecNoStr",
+                                Value: iRecNoStr
+                            },
+                            {
+                                ParmName: "@iType",
+                                Value: type
+                            }
+                            ]
+                            }
+                            var result = SqlStoreProce(jsonobj);
+                            if (result != "1") {
+                                alert(result);
+                            }
+                            else {
+                                $("#tabCdRec").datagrid("loadData", []);
+                                $("#Text6").numberbox("setValue", 0);
+                            }
+                        }
+                    })
+                }
+            }
+        }
+
+        function saveMs() {
+
+        }
+        var clearZeroConfirm = function () {
+            var fRecePartQty = $("#Text5").numberbox("getValue");
+            fRecePartQty = isNaN(Number(fRecePartQty)) ? 0 : Number(fRecePartQty);
+            fRecePartQty = fRecePartQty.toFixed(1);
+            if (fRecePartQty > 1) {
+                SendPortMessage("0x54");
+                setTimeout("clearZeroConfirm()", 500);
+            }
+        }
+
+        function saveAndPrint() {
+            if ($("#form1").form("validate")) {
+                //var selectRow = $("#tableSdOrderDD").datagrid("getSelected");
+                //if (selectRow) {
+                if (iSelectRecNo > 0) {
+                    var iRecNo = iSelectRecNo;
+                    var fPartQty = $("#Text5").numberbox("getValue");
+                    var fDeductQty = $("#Text6").numberbox("getValue");
+                    fDeductQty = fDeductQty == "" || fDeductQty == null || fDeductQty == undefined ? 0 : fDeductQty;
+                    var fRealQty = $("#Text7").numberbox("getValue");
+                    var sCheckPersonID = $("#txbCheckPerson").textbox("getValue");
+                    var sMachineID = $("#txbMachine").textbox("getValue");
+                    var fWeight = isNaN(Number($("#Text4").numberbox("getValue"))) ? 0 : Number($("#Text4").numberbox("getValue"));
+                    var sUserID = userid;
+                    fPartQty = isNaN(Number(fPartQty)) ? 0 : Number(fPartQty);
+                    if (fPartQty < 5) {
+                        alert("米数不能小于5");
+                        return false;
+                    }
+                    $("#btnSavePrint").attr("disabled", true);
+                    var allRows1 = $("#tabCdRec").datagrid("getRows");
+                    var iRecNoStr = "";
+                    for (var i = 0; i < allRows1.length; i++) {
+                        iRecNoStr += allRows1[i].iRecNo + ",";
+                    }
+                    if (iRecNoStr != "") {
+                        iRecNoStr = iRecNoStr.substr(0, iRecNoStr.length - 1);
+                    }
+                    var jsonobj = {
+                        StoreProName: "SpVatNoBulidReelNoNew",
+                        StoreParms: [{
+                            ParmName: "@iSDOrderDDRecNo",
+                            Value: iRecNo
+                        },
+                        {
+                            ParmName: "@fPartQty",
+                            Value: fPartQty
+                        },
+                        {
+                            ParmName: "@fDeductQty",
+                            Value: fDeductQty
+                        },
+                        {
+                            ParmName: "@fRealQty",
+                            Value: fRealQty
+                        },
+                        {
+                            ParmName: "@sCheckPersonID",
+                            Value: sCheckPersonID
+                        },
+                        {
+                            ParmName: "@sMachineID",
+                            Value: sMachineID
+                        },
+                        {
+                            ParmName: "@fWeight",
+                            Value: fWeight
+                        },
+                        {
+                            ParmName: "@sUserID",
+                            Value: sUserID
+                        },
+                        {
+                            ParmName: "@sRecNoStr",
+                            Value: iRecNoStr
+                        }
+                        ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                    var resultArr = result.split(":");
+                    var resultFirst = resultArr[0];
+                    var resultMessage = resultArr[1];
+                    if (resultFirst == "1") {
+                        $.messager.show({
+                            title: '保存成功',
+                            msg: '保存成功，正在打印...',
+                            showType: null,
+                            style: {
+                                right: '',
+                                top: document.body.scrollTop + document.documentElement.scrollTop,
+                                bottom: ''
+                            },
+                            timeout: 2000
+                        });
+                        if (MSComm1.PortOpen == false) {
+                            OpenPort();
+                        }
+                        //码表清0
+                        //                        SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x54");
+                        SendPortMessage("0x54");
+
+                        setTimeout("clearZeroConfirm()", 500);
+                        $("#tabCdRec").datagrid("loadData", []);
+                        var sReelNo = resultArr[2];
+                        var theSelectRow;
+                        var allRowsOrder = $("#tableSdOrderDD").datagrid("getRows");
+                        for (var i = 0; i < allRowsOrder.length; i++) {
+                            if (iSelectRecNo == allRowsOrder[i].iRecNo) {
+                                theSelectRow = allRowsOrder[i];
+                                break;
+                            }
+                        }
+                        var sReelNoFlag = theSelectRow.sReelNoFlag;
+
+                        var theReelNo = "";
+                        var sReelNoPre = theSelectRow.sReelNoPre == null || theSelectRow.sReelNoPre == undefined ? "" : theSelectRow.sReelNoPre
+                        if (sReelNoFlag != "0") {
+                            var nextPartReelCount = parseInt(jsright(sReelNo, sReelNoFlag.length)) + 1;
+                            sReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + nextPartReelCount).toString(), sReelNoFlag.length);
+                        }
+                        else {
+                            var nextPartReelCount = parseInt(sReelNo) + 1;
+                            sReelNo = sReelNoPre + nextPartReelCount.toString();
+                        }
+                        $("#Text9").textbox("setValue", sReelNo);
+                        $("#Text6").textbox("setValue", null);
+
+                        var sqlObjR = {
+                            TableName: "vwSDOrderDDMD",
+                            Fields: "iCurtPartReelCount,fReadyPartQty",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "iRecNo",
+                                    ComOprt: "=",
+                                    Value: iSelectRecNo
+                                }
+                            ]
+                        }
+                        var resultRR = SqlGetData(sqlObjR);
+                        if (resultRR.length > 0) {
+                            $("#Text13").numberbox("setValue", resultRR[0].iCurtPartReelCount);
+                            $("#Text12").numberbox("setValue", resultRR[0].fReadyPartQty);
+                        }
+
+
+                        //                        var iCurtReelCount = $("#Text13").numberbox("getValue");
+                        //                        iCurtReelCount = isNaN(Number(iCurtReelCount)) ? 0 : Number(iCurtReelCount);
+                        //                        iCurtReelCount += 1;
+                        //                        $("#Text13").numberbox("setValue", iCurtReelCount);
+
+                        fLastCutQty = 0.00;
+                        var theQtyO = $("#hidQtyO").val();
+                        var theQtyN = (isNaN(Number(theQtyO)) ? 0 : Number(theQtyO));
+                        totalQty += (isNaN(Number(fRealQty)) ? 0 : Number(fRealQty));
+                        $("#txbTodayTotal").numberbox("setValue", totalQty);
+                        //                        var fReadyPartQty = isNaN(Number($("#Text12").numberbox("getValue"))) ? 0 : Number($("#Text12").numberbox("getValue"));
+                        //                        fReadyPartQty = fReadyPartQty + Number(fRealQty);
+                        //                        $("#Text12").numberbox("setValue", fReadyPartQty);
+                        var jsonobj = {
+                            StoreProName: "SpYieldAdd",
+                            StoreParms: [{
+                                ParmName: "@sMachineID",
+                                Value: sMachineID
+                            }, {
+                                ParmName: "@sCheckPersonID",
+                                Value: sCheckPersonID
+                            }, {
+                                ParmName: "@fQty",
+                                Value: theQtyN
+                            }
+                            ]
+                        }
+                        var result11 = SqlStoreProce(jsonobj);
+                        iLastSDOrderDDVatNoDReelNoRecNo = resultMessage;
+                        var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo + "&key=" + iLastSDOrderDDVatNoDReelNoRecNo + "&copies=" + iPrintCount + "&r=" + Math.random();
+                        $("#ifrpb").attr("src", "");
+                        $("#ifrpb").attr("src", url);
+                        if (iPrintMoudleRecNo2 > 0) {
+                            var url1 = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo2 + "&key=" + iLastSDOrderDDVatNoDReelNoRecNo + "&r=" + Math.random();
+                            $("#ifrpb1").attr("src", "");
+                            $("#ifrpb1").attr("src", url1);
+                        }
+                        //是否入库
+                        var jsonobjStock = {
+                            StoreProName: "SpYbStockIn",
+                            StoreParms: [
+                            {
+                                ParmName: "@iRecNo",
+                                Value: iLastSDOrderDDVatNoDReelNoRecNo
+                            }, {
+                                ParmName: "@sUserID",
+                                Value: userid
+                            }
+                            ]
+                        }
+                        var resultStock = SqlStoreProce(jsonobjStock);
+                        if (resultStock != "1") {
+                            alert("入库失败：" + resultStock);
+                        }
+                    }
+                    else {
+                        alert(resultMessage);
+                    }
+                }
+                else {
+                    alert("请先选择订单！");
+                    return false;
+                }
+                setTimeout(function () {
+                    $("#btnSavePrint").attr("disabled", false);
+                }, 5000)
+            }
+        }
+        function finishPart() {
+            //var selectRow = $("#tableSdOrderDD").datagrid("getSelected");
+            if (iSelectRecNo > 0) {
+                $.messager.confirm("您确定结束验布吗？", "您确定结束验布吗?", function (r) {
+                    if (r) {
+                        var jsonobj = {
+                            StoreProName: "SpVatNoPartFinishNew",
+                            StoreParms: [{
+                                ParmName: "@iSDOrderDDRecNo",
+                                Value: iSelectRecNo
+                            }
+                        ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        switch (result) {
+                            case "0":
+                                {
+                                    alert("此缸号布已经结束");
+                                } break;
+                            case "1":
+                                {
+                                    MessageShow("操作成功", "验布结束成功");
+                                    var lastMachine = $("#txbMachine").combobox("getValue");
+                                    $("#form1").form("reset");
+                                    $("#txbMachine").combobox("setValue", lastMachine);
+                                    $("#txbCheckPerson").combobox("setValue", userid);
+                                } break;
+                            case "2":
+                                {
+                                    //有重打的直接打印
+                                    var orderAllRows = $("#tableSdOrderDD").datagrid("getRows");
+                                    for (var i = 0; i < orderAllRows.length; i++) {
+                                        if (orderAllRows[i].iRecNo == iSelectRecNo) {
+                                            //先打印调整列表
+                                            var iSDOrderMRecNo = orderAllRows[i].iSDOrderMRecNo;
+                                            var iSDOrderDRecNo = orderAllRows[i].iSDOrderDRecNo;
+                                            var url = "/Base/PbPage.aspx?otype=print&iformid=20025&irecno=101&key=0&pb_iTheSDOrderMRecNo=" + iSDOrderMRecNo + "&pb_iTheiSDOrderDRecNo=" + iSDOrderDRecNo + "&r=" + Math.random();
+                                            $("#ifrpb").attr("src", "");
+                                            $("#ifrpb").attr("src", url);
+                                            //获取全部重打的数据。一个个打印
+                                            var sqlObjRemind = {
+                                                TableName: "SDOrderDDVatNoRemind",
+                                                Fields: "iSDOrderDDVatNoDReelNoRecNo",
+                                                SelectAll: "True",
+                                                Filters: [
+                                                    {
+                                                        Field: "iSdOrderMRecNo",
+                                                        ComOprt: "=",
+                                                        Value: "'" + iSDOrderMRecNo + "'",
+                                                        LinkOprt: "and"
+                                                    },
+                                                    {
+                                                        Field: "iSdOrderDRecNo",
+                                                        ComOprt: "=",
+                                                        Value: "'" + iSDOrderDRecNo + "'"
+                                                    }
+                                                ]
+                                            }
+                                            var resultRemind = SqlGetData(sqlObjRemind);
+                                            if (resultRemind.length > 0) {
+                                                for (var i = 0; i < resultRemind.length; i++) {
+                                                    var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo + "&key=" + resultRemind[i].iSDOrderDDVatNoDReelNoRecNo + "&copies=" + iPrintCount + "&r=" + Math.random();
+                                                    $("#ifrpb").attr("src", "");
+                                                    $("#ifrpb").attr("src", url);
+                                                    //                                                    var max = 0;
+                                                    //                                                    for (var i = 0; i < iPrintCount; i++) {
+                                                    //                                                        var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo + "&key=" + resultRemind[i].iSDOrderDDVatNoDReelNoRecNo + "&r=" + Math.random();
+                                                    //                                                        var thefr = document.getElementById("ifrpb" + i.toString());
+                                                    //                                                        if (thefr) {
+                                                    //                                                            $("#ifrpb" + i.toString()).attr("src", "");
+                                                    //                                                            $("#ifrpb" + i.toString()).attr("src", url);
+                                                    //                                                        }
+                                                    //                                                        else {
+                                                    //                                                            if (max == 0) {
+                                                    //                                                                max = i;
+                                                    //                                                            }
+                                                    //                                                            $("#ifrpb" + (i - max).toString()).attr("src", "");
+                                                    //                                                            $("#ifrpb" + (i - max).toString()).attr("src", url);
+                                                    //                                                        }
+                                                    //                                                    }
+                                                }
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    MessageShow("操作成功", "验布结束成功，<span style='color:red;font-size:14px;font-weight:bold;'>调整卷号已打印，请及时更换</span>");
+                                } break;
+                            case "3":
+                                {
+                                    alert("操作失败，发生未知错误");
+                                } break;
+                        }
+                    }
+                })
+            }
+            else {
+                alert("请先选择订单！");
+                return false;
+            }
+        }
+        function MessageShow(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'none',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                },
+                timeout: 2000
+            });
+        }
+
+        function OpenPort() {
+            if (MSComm1.PortOpen == false) {
+                MSComm1.PortOpen = true;
+                $("#btnOpenOrClose").val("断开验布机");
+                $("#btnSaveMs").val("暂停");
+            }
+            else {
+                //window.alert("已经开始接收数据!");
+            }
+            isPortOpen = true;
+        }
+        function ClosePort() {
+            if (MSComm1.PortOpen == true) {
+                MSComm1.PortOpen = false;
+                $("#btnOpenOrClose").val("连接验布机");
+                $("#btnSaveMs").val("开始");
+            }
+            else {
+                //window.alert("已经开始接收数据!");
+            }
+            isPortOpen = false;
+        }
+        function CloseOrOpenPort() {
+            if (MSComm1.PortOpen == true) {
+                MSComm1.PortOpen = false;
+                isPortOpen = false;
+                $("#btnOpenOrClose").val("连接验布机");
+                $("#btnSaveMs").val("开始");
+            }
+            else {
+                MSComm1.PortOpen = true;
+                isPortOpen = true;
+                $("#btnOpenOrClose").val("断开验布机");
+                $("#btnSaveMs").val("暂停");
+            }
+        }
+        function openSetPort() {
+            var portCookie = getCookie("mscomm32_port");
+            var machineID = getCookie("machineID");
+            if (portCookie != null) {
+                $("#txbCommPort").numberspinner("setValue", portCookie);
+            }
+            if (machineID != null) {
+                $("#txbMachineID").textbox("setValue", machineID);
+            }
+            $("#divCommPort").dialog("open");
+        }
+        function savePort() {
+            var port = $("#txbCommPort").numberspinner("getValue");
+            var machineID = $("#txbMachineID").textbox("getValue");
+            if (port == null || port == undefined || port == "") {
+                alert("端口号不能为空");
+                return;
+            }
+            if (machineID == null || machineID == undefined || machineID == "") {
+                alert("机台号不能为空");
+                return;
+            }
+            if (MSComm1.PortOpen == true) {
+                MSComm1.PortOpen = false;
+            }
+            setCookie("mscomm32_port", port, "d36500");
+            setCookie("machineID", machineID, "d36500");
+            window.location.reload();
+            $("#divCommPort").dialog("close");
+        }
+        function portCancel() {
+            $("#divCommPort").dialog("close");
+        }
+        function SendPortMessage(comm) {
+            var cmd_send = "";
+            var result = comm;
+            var results = result.split(',');
+            for (var i = 0; i < results.length; i++) {
+                cmd_send += String.fromCharCode(eval(results[i]));
+            }
+            if (MSComm1.PortOpen == false) {
+                window.alert("串口已经关闭!!");
+            }
+            else {
+                MSComm1.Output = cmd_send; //发送命令    
+            }
+        }
+
+        function previewNext() {
+            if ($("#form1").form("validate")) {
+                if (iSelectRecNo > 0) {
+                    var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo + "&key=1&copies=1&r=" + Math.random();
+                    $("#ifrpb").attr("src", "");
+                    $("#ifrpb").attr("src", url);
+                }
+                else {
+                    alert("请先选择订单");
+                }
+            }
+        }
+        function flawWindowClose() {
+            var sReason = $("#txbFlawReason").textbox("getValue");
+            if (sReason.substr(0, 2) == "11") {
+                //fLastCutQty = fDeductQty;
+                targetTxt = "Text5";
+            }
+        }
+
+        function BarcodeScan() {
+            if (event.keyCode == 13) {
+                var barcode = $("#txbOrderNo").textbox("getValue");
+                if (barcode != "") {
+                    var filters = [
+                        {
+                            Field: " ",
+                            ComOprt: "not exists",
+                            Value: "(select 1 from SDOrderDDVatNo as b where isnull(b.dEndTime,'2299-12-31')<>'2299-12-31' and a.iSDOrderMRecNo=b.iSDOrderMRecNo and a.iSDOrderDRecNo=b.iSDOrderDRecNo and a.sVatNo=b.sVatNo)",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "sBarcode",
+                            ComOprt: "=",
+                            Value: "'" + barcode + "'"
+                        }
+                    ];
+
+                    var sqlObj = {
+                        TableName: "vwSDOrderDDMD as a",
+                        Fields: "*",
+                        SelectAll: "True",
+                        Filters: filters
+                    }
+                    //var result = SqlGetData(sqlObj);
+                    var data = SqlGetData(sqlObj);
+                    if (data.length > 0) {
+                        iSelectRecNo = data[0].iRecNo;
+                        iPrintMoudleRecNo = data[0].iPrintMoudleRecNo;
+                        iPrintMoudleRecNo2 = data[0].iPrintMoudleRecNo2;
+                        iPrintCount = data[0].iPrintCount;
+                        sUnitID = data[0].sUnitID;
+                        //根据订单设置码表单位
+                        if (sUnitID == "M") {
+                            //                    SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x4D");
+                            SendPortMessage("0x4D");
+                        }
+                        else if (sUnitID == "Y") {
+                            //                    SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x59");
+                            SendPortMessage("0x59");
+                        }
+
+
+                        $("#form1").form("load", data[0]);
+                        var sReelNoFlag = data[0].sReelNoFlag;
+                        var theReelNo = "";
+                        var sReelNoPre = data[0].sReelNoPre == null || data[0].sReelNoPre == undefined ? "" : data[0].sReelNoPre;
+                        if (data[0].iCurtPartReelCount == 0 || data[0].iCurtPartReelCount == null || data[0].iCurtPartReelCount == undefined) {
+                            if (sReelNoFlag != "0") {
+                                theReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + 1).toString(), sReelNoFlag.length);
+                            }
+                            else {
+                                theReelNo = sReelNoPre + "1";
+                            }
+                        }
+                        else {
+                            var nextPartReelCount = parseInt(data[0].iCurtPartReelCount) + 1;
+                            if (sReelNoFlag != "0") {
+                                theReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + nextPartReelCount).toString(), sReelNoFlag.length);
+                            }
+                            else {
+                                theReelNo = sReelNoPre + nextPartReelCount.toString();
+                            }
+                        }
+                        $("#Text9").textbox("setValue", theReelNo);
+                        $("#txaRemark").val(data[0].sCustomerAskFull);
+                        $("#txbOrderNo").textbox("setValue", data[0].sOrderNo);
+
+                        var sqlObjMaxReelNo = {
+                            TableName: "SDOrderDDVatNoDReelNo",
+                            Fields: "max(iRecNo) as iRecNo",
+                            SelectAll: "True",
+                            Filters: [
+                                {
+                                    Field: "iSDOrderMRecNo",
+                                    ComOprt: "=",
+                                    Value: "'" + data[0].iSDOrderMRecNo + "'",
+                                    LinkOprt: "and"
+                                },
+                                {
+                                    Field: "iSDOrderDRecNo",
+                                    ComOprt: "=",
+                                    Value: "'" + data[0].iSDOrderDRecNo + "'"
+                                }
+                            ]
+                        }
+                        var resultMaxRecNo = SqlGetData(sqlObjMaxReelNo);
+                        if (resultMaxRecNo.length > 0) {
+                            iLastSDOrderDDVatNoDReelNoRecNo = resultMaxRecNo[0].iRecNo;
+                        }
+                    }
+                    else {
+                        MessageShow("<span style='font-size:14px;font-weight:bold;color:red;'>条码不存在</span>", "<span style='font-size:18px;font-weight:bold;color:red;'>条码对应的订单缸号不存在或已结束</span>");
+                    }
+                }
+                $("#txbOrderNo").textbox("setValue", "");
+                $($("#txbOrderNo").textbox("textbox")).focus();
+                stopBubble($("#txtBarcode")[0]);
+            }
+        }
+
+        function stopBubble(e) {
+            // 如果传入了事件对象，那么就是非ie浏览器
+            if (e && e.stopPropagation) {
+                //因此它支持W3C的stopPropagation()方法
+                e.stopPropagation();
+            } else {
+                //否则我们使用ie的方法来取消事件冒泡
+                window.event.cancelBubble = true;
+            }
+        }
+        function pagerFilter(data) {
+            if (typeof data.length == 'number' && typeof data.splice == 'function') {    // 判断数据是否是数组
+                data = {
+                    total: data.length,
+                    rows: data
+                }
+            }
+            var dg = $(this);
+            var opts = dg.datagrid('options');
+            var pager = dg.datagrid('getPager');
+            pager.pagination({
+                onSelectPage: function (pageNum, pageSize) {
+                    opts.pageNumber = pageNum;
+                    opts.pageSize = pageSize;
+                    pager.pagination('refresh', {
+                        pageNumber: pageNum,
+                        pageSize: pageSize
+                    });
+                    dg.datagrid('loadData', data);
+                }
+            });
+            if (!data.originalRows) {
+                data.originalRows = (data.rows);
+            }
+            var start = (opts.pageNumber - 1) * parseInt(opts.pageSize);
+            var end = start + parseInt(opts.pageSize);
+            data.rows = (data.originalRows.slice(start, end));
+            return data;
+        }
+
+        function clearZero() {
+            var sMachineID = $("#txbMachine").textbox("getValue");
+            var sCheckPersonID = $("#txbCheckPerson").textbox("getValue");
+            var theQtyO = $("#hidQtyO").val();
+            var theQtyN = (isNaN(Number(theQtyO)) ? 0 : Number(theQtyO));
+			if ($("#form1").form("validate")) {
+                if (iSelectRecNo > 0) {
+                    var iRecNo = iSelectRecNo;
+                    var fClearQty = $("#Text5").numberbox("getValue");
+                    var sUserID = userid;
+                    var jsonobj = {
+                        StoreProName: "SpSdOrderDDVatNoClearNo",
+                        StoreParms: [{
+                            ParmName: "@iSDOrderDDRecNo",
+                            Value: iRecNo
+                        },
+                        {
+                            ParmName: "@fClearQty",
+                            Value: fClearQty
+                        },
+                        {
+                            ParmName: "@sCheckPersonID",
+                            Value: sCheckPersonID
+                        },
+                        {
+                            ParmName: "@sMachineID",
+                            Value: sMachineID
+                        },
+                        {
+                            ParmName: "@sUserID",
+                            Value: sUserID
+                        }
+                        ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                }
+            }
+			
+			
+            //totalQty += theQtyN;
+            //$("#txbTodayTotal").numberbox("setValue", totalQty);
+            if (MSComm1.PortOpen == false) {
+                OpenPort();
+            }
+            //码表清0
+            SendPortMessage("0x54");
+            //            var clearZeroConfirm = function () {
+            //                var fRecePartQty = $("#Text5").numberbox("getValue");
+            //                fRecePartQty = isNaN(Number(fRecePartQty)) ? 0 : Number(fRecePartQty);
+            //                fRecePartQty = fRecePartQty.toFixed(1);
+            //                if (fRecePartQty >1) {
+            //                    SendPortMessage("0x54");
+            //                    setTimeout("clearZeroConfirm()", 500);
+            //                }
+            //            }
+            setTimeout("clearZeroConfirm()", 500);
+            $("#tabCdRec").datagrid("loadData", []);
+            fLastCutQty = 0.00;
+
+            var jsonobj = {
+                StoreProName: "SpYieldAdd",
+                StoreParms: [{
+                    ParmName: "@sMachineID",
+                    Value: sMachineID
+                }, {
+                    ParmName: "@sCheckPersonID",
+                    Value: sCheckPersonID
+                }, {
+                    ParmName: "@fQty",
+                    Value: theQtyN
+                }
+                ]
+            }
+            var result11 = SqlStoreProce(jsonobj);
+            if (result11 != "1") {
+                alert(result11);
+            }
+            else {
+
+            }
+        }
+
+        function SamplePrint() {
+            if ($("#form1").form("validate")) {
+                if (iSelectRecNo > 0) {
+                    $("#btnSamplePrint").attr("disabled", true);
+                    var iRecNo = iSelectRecNo;
+                    var fPartQty = $("#Text5").numberbox("getValue");
+                    var fDeductQty = $("#Text6").numberbox("getValue");
+                    fDeductQty = fDeductQty == "" || fDeductQty == null || fDeductQty == undefined ? 0 : fDeductQty;
+                    var fRealQty = $("#Text7").numberbox("getValue");
+                    var sCheckPersonID = $("#txbCheckPerson").textbox("getValue");
+                    var sMachineID = $("#txbMachine").textbox("getValue");
+                    var fWeight = isNaN(Number($("#Text4").numberbox("getValue"))) ? 0 : Number($("#Text4").numberbox("getValue"));
+                    var sUserID = userid;
+                    var allRows1 = $("#tabCdRec").datagrid("getRows");
+                    var iRecNoStr = "";
+                    for (var i = 0; i < allRows1.length; i++) {
+                        iRecNoStr += allRows1[i].iRecNo + ",";
+                    }
+                    if (iRecNoStr != "") {
+                        iRecNoStr = iRecNoStr.substr(0, iRecNoStr.length - 1);
+                    }
+                    var jsonobj = {
+                        StoreProName: "SpSdOrderDDVatNoCutSampler",
+                        StoreParms: [{
+                            ParmName: "@iSDOrderDDRecNo",
+                            Value: iRecNo
+                        },
+                        {
+                            ParmName: "@fPartQty",
+                            Value: fPartQty
+                        },
+                        {
+                            ParmName: "@fDeductQty",
+                            Value: fDeductQty
+                        },
+                        {
+                            ParmName: "@fRealQty",
+                            Value: fRealQty
+                        },
+                        {
+                            ParmName: "@sCheckPersonID",
+                            Value: sCheckPersonID
+                        },
+                        {
+                            ParmName: "@sMachineID",
+                            Value: sMachineID
+                        },
+                        {
+                            ParmName: "@fWeight",
+                            Value: fWeight
+                        },
+                        {
+                            ParmName: "@sUserID",
+                            Value: sUserID
+                        },
+                        {
+                            ParmName: "@sRecNoStr",
+                            Value: iRecNoStr
+                        }
+                        ]
+                    }
+                    var result = SqlStoreProce(jsonobj);
+                    var resultArr = result.split(":");
+                    var resultFirst = resultArr[0];
+                    var resultMessage = resultArr[1];
+                    if (resultFirst == "1") {
+                        $.messager.show({
+                            title: '保存成功',
+                            msg: '保存成功，正在打印...',
+                            showType: null,
+                            style: {
+                                right: '',
+                                top: document.body.scrollTop + document.documentElement.scrollTop,
+                                bottom: ''
+                            },
+                            timeout: 2000
+                        });
+                        if (MSComm1.PortOpen == false) {
+                            OpenPort();
+                        }
+                        //码表清0
+                        //                        SendPortMessage("0x00,0x00,0x00,0x00,0x00,0x00,0x54");
+                        SendPortMessage("0x54");
+                        //                        var clearZeroConfirm = function () {
+                        //                            var fRecePartQty = $("#Text5").numberbox("getValue");
+                        //                            fRecePartQty = isNaN(Number(fRecePartQty)) ? 0 : Number(fRecePartQty);
+                        //                            fRecePartQty = fRecePartQty.toFixed(1);
+                        //                            if (fRecePartQty >1) {
+                        //                                SendPortMessage("0x54");
+                        //                                setTimeout("clearZeroConfirm()", 500);
+                        //                            }
+                        //                        }
+                        setTimeout("clearZeroConfirm()", 500);
+                        $("#tabCdRec").datagrid("loadData", []);
+                        //var sReelNo = resultArr[2];
+                        //                        var theSelectRow;
+                        //                        var allRowsOrder = $("#tableSdOrderDD").datagrid("getRows");
+                        //                        for (var i = 0; i < allRowsOrder.length; i++) {
+                        //                            if (iSelectRecNo == allRowsOrder[i].iRecNo) {
+                        //                                theSelectRow = allRowsOrder[i];
+                        //                                break;
+                        //                            }
+                        //                        }
+                        //var sReelNoFlag = theSelectRow.sReelNoFlag;
+
+                        //var theReelNo = "";
+                        //                        var sReelNoPre = theSelectRow.sReelNoPre == null || theSelectRow.sReelNoPre == undefined ? "" : theSelectRow.sReelNoPre
+                        //                        if (sReelNoFlag != "0") {
+                        //                            var nextPartReelCount = parseInt(jsright(sReelNo, sReelNoFlag.length)) + 1;
+                        //                            sReelNo = sReelNoPre + jsright((parseInt("1" + sReelNoFlag) + nextPartReelCount).toString(), sReelNoFlag.length);
+                        //                        }
+                        //                        else {
+                        //                            var nextPartReelCount = parseInt(sReelNo) + 1;
+                        //                            sReelNo = sReelNoPre + nextPartReelCount.toString();
+                        //                        }
+                        //$("#Text9").textbox("setValue", sReelNo);
+                        $("#Text6").textbox("setValue", null);
+
+                        //                        var iCurtReelCount = $("#Text13").numberbox("getValue");
+                        //                        iCurtReelCount = isNaN(Number(iCurtReelCount)) ? 0 : Number(iCurtReelCount);
+                        //                        iCurtReelCount += 1;
+                        //                        $("#Text13").numberbox("setValue", iCurtReelCount);
+
+                        fLastCutQty = 0.00;
+                        var theQtyO = $("#hidQtyO").val();
+                        var theQtyN = (isNaN(Number(theQtyO)) ? 0 : Number(theQtyO));
+                        //totalQty += theQtyN;
+                        //$("#txbTodayTotal").numberbox("setValue", totalQty);
+                        //                        var fReadyPartQty = isNaN(Number($("#Text12").numberbox("getValue"))) ? 0 : Number($("#Text12").numberbox("getValue"));
+                        //                        fReadyPartQty += fRealQty;
+                        //                        $("#Text12").numberbox("setValue", fReadyPartQty);
+                        var jsonobj = {
+                            StoreProName: "SpYieldAdd",
+                            StoreParms: [{
+                                ParmName: "@sMachineID",
+                                Value: sMachineID
+                            }, {
+                                ParmName: "@sCheckPersonID",
+                                Value: sCheckPersonID
+                            }, {
+                                ParmName: "@fQty",
+                                Value: theQtyN
+                            }
+                            ]
+                        }
+                        var result11 = SqlStoreProce(jsonobj);
+                        iLastSDOrderDDVatNoDReelNoRecNo = resultMessage;
+                        //var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=134&key=" + iLastSDOrderDDVatNoDReelNoRecNo + "&r=" + Math.random();
+                        //$("#ifrpb").attr("src", "");
+                        //$("#ifrpb").attr("src", url);
+
+                        //                        var max = 0;
+                        //                        for (var i = 0; i < iPrintCount; i++) {
+                        //                            var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo + "&key=" + iLastSDOrderDDVatNoDReelNoRecNo + "&r=" + Math.random();
+                        //                            
+                        //                            
+                        //                            var thefr = document.getElementById("ifrpb" + i.toString());
+                        //                            if (thefr) {
+                        //                                $("#ifrpb" + i.toString()).attr("src", "");
+                        //                                $("#ifrpb" + i.toString()).attr("src", url);
+                        //                            }
+                        //                            else {
+                        //                                if (max == 0) {
+                        //                                    max = i;
+                        //                                }
+                        //                                $("#ifrpb" + (i - max).toString()).attr("src", "");
+                        //                                $("#ifrpb" + (i - max).toString()).attr("src", url);
+                        //                            }
+                        //                        }
+                        //                        if (iPrintMoudleRecNo2 > 0) {
+                        //                            var url = "/Base/PbPage.aspx?otype=print&iformid=20024&irecno=" + iPrintMoudleRecNo2 + "&key=" + iLastSDOrderDDVatNoDReelNoRecNo + "&r=" + Math.random();
+                        //                            $("#ifrpb").attr("src", "");
+                        //                            $("#ifrpb").attr("src", url);
+                        //                        }
+
+                    }
+                    else {
+                        alert(resultMessage);
+                    }
+                }
+                else {
+                    alert("请先选择订单！");
+                    return false;
+                }
+                setTimeout(function () {
+                    $("#btnSamplePrint").attr("disabled", false);
+                }, 5000)
+            }
+        }
+    </script>
+    <style type="text/css">
+        body
+        {
+            font-family: 微软雅黑;
+            font-size: 18px;
+        }
+        .centerTableH
+        {
+            border-spacing: 2px;
+        }
+        .centerTableH tr td
+        {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+        }
+        .centerTable
+        {
+            border-spacing: 5px;
+        }
+        .centerTable tr td
+        {
+            font-size: 20px;
+            font-weight: bold;
+            font-family: 微软雅黑;
+        }
+        .textbox .textbox-text
+        {
+            font-size: 16px;
+            color: Blue;
+            font-weight: bold;
+        }
+        .txbreadonly
+        {
+            background-color: #ffffaa;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 40px; border-radius: 5px;*/
+        }
+        .txbred
+        {
+            color: Red;
+            border: none;
+            border-bottom: solid 1px #95b8e7; /*height: 40px; border-radius: 5px;*/
+        }
+        /*input[type="button"]
+        {
+            height: 49px;
+            font-size: 18px;
+            font-family: 微软雅黑;
+            font-weight: bold;
+            width: 100px;
+        }*/
+        .btnBigger
+        {
+            height: 40px;
+            font-size: 18px;
+            font-family: 微软雅黑;
+            font-weight: bold;
+        }
+        .btnBigger1
+        {
+            height: 80px;
+            font-size: 18px;
+            font-family: 微软雅黑;
+            font-weight: bold;
+        }
+        .btnBiggerFix
+        {
+            height: 35px;
+            font-size: 12px;
+            font-family: 微软雅黑;
+            font-weight: bold;
+            width: 70px;
+        }
+        .keyBoardNum
+        {
+            width: 98%;
+            height: 99%;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .btnMeterAdjust
+        {
+            height: 30px;
+            width: 35px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0px;
+            padding: 0px;
+        }
+        .btnPositionAdjust
+        {
+            height: 30px;
+            width: 35px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0px;
+            padding: 0px;
+        }
+        .btnDeAdjust
+        {
+            height: 30px;
+            width: 35px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0px;
+            padding: 0px;
+        }
+    </style>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'north',border:false" style="height: 60px; padding-left: 20px;">
+        <table>
+            <tr>
+                <td style="font-size: 20px;">
+                    订单号
+                </td>
+                <td>
+                    <input id="txbOrderNo" class="easyui-textbox" style="width: 100px; height: 35px;"
+                        type="text" />
+                </td>
+                <td>
+                    <input id="Button1" type="button" value="订单选择" style="height: 35px; width: 100px;
+                        font-size: 18px; font-weight: bold;" onclick="openOrderWindow()" />
+                </td>
+                <td>
+                    <h1 style="font-family: 微软雅黑; background-color: #eee;">
+                        验布打卷</h1>
+                </td>
+                <td style="width: 30px;">
+                </td>
+                <td style="font-size: 20px;">
+                    总米数
+                </td>
+                <td>
+                    <input id="txbTodayTotal" class="easyui-numberbox" data-options="readonly:true,precision:1"
+                        style="width: 80px; height: 35px;" type="text" />
+                </td>
+                <td>
+                    <input id="btnOpenOrClose" type="button" style="width: 100px; height: 30px; font-size: 14px;"
+                        value="断开验布机" onclick="CloseOrOpenPort()" />
+                    <input id="btnSetPort" type="button" style="width: 100px; height: 30px; font-size: 14px;"
+                        value="设置端口号" onclick="openSetPort();" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div data-options="region:'west',title:'标签信息',split:true,collapsible:false" style="width: 490px;">
+        <form id="form1">
+        <table class="centerTable">
+            <tr>
+                <td>
+                    产品
+                </td>
+                <td colspan="5">
+                    <input id="Text2" type="text" name="sCodeFull" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 250px; height: 30px;" />
+                    <input id="hidQtyO" type="hidden" />
+                </td>
+                <!--<td>
+                    门幅
+                </td>
+                <td>
+                    <input id="Text17" type="text" name="fProductWidth" class="easyui-numberbox" data-options="readonly:true"
+                        style="width: 60px; height: 30px;" />
+                </td>-->
+            </tr>
+            <tr>
+                <td>
+                    客户
+                </td>
+                <td colspan="3">
+                    <input id="Text3" type="text" name="sCustFull" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 211px; height: 30px;" />
+                </td>
+                <td>
+                    重量
+                </td>
+                <td>
+                    <input id="Text4" type="text" name="fPartWeight" class="easyui-numberbox numkeyboard"
+                        data-options="precision:1" style="width: 71px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    米数
+                </td>
+                <td>
+                    <input id="Text5" type="text" name="fPartQty" class="easyui-numberbox numkeyboard"
+                        data-options="precision:1,required:true,onChange:partQtyChange" style="width: 80px;
+                        height: 30px;" />
+                    <input id="Button2" type="button" class="btnMeterAdjust" value="+" />
+                    <input id="Button3" type="button" class="btnMeterAdjust" value="-" />
+                </td>
+                <td>
+                    扣
+                </td>
+                <td>
+                    <input id="Text6" type="text" name="fDeductQty" class="easyui-numberbox numkeyboard"
+                        data-options="precision:1,onChange:DeductQtyChange" style="width: 60px; height: 30px;" />
+                </td>
+                <td>
+                    实际
+                </td>
+                <td>
+                    <input id="Text7" type="text" name="fRealQty" class="easyui-numberbox" data-options="precision:1,readonly:true,required:true"
+                        style="width: 72px; height: 30px; color: Red;" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    颜色
+                </td>
+                <td colspan="2">
+                    <input id="Text8" type="text" name="sColorFull" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 150px; height: 30px;" />
+                </td>
+                <td>
+                    卷号
+                </td>
+                <td colspan="2">
+                    <input id="Text9" type="text" name="sCurtPartReelNo" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 120px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    缸号
+                </td>
+                <td colspan="2">
+                    <input id="Text10" type="text" name="sVatNo" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 120px; height: 30px;" />
+                </td>
+                <td>
+                    花型
+                </td>
+                <td colspan="2">
+                    <input id="Text15" type="text" name="sFlowerType" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 120px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    检验
+                </td>
+                <td colspan="2">
+                    <input id="txbCheckPerson" type="text" name="sCheckPersonID" class="easyui-combobox"
+                        data-options="valueField:'sCode',textField:'sName',required:true,readonly:true"
+                        style="width: 120px; height: 30px;" />
+                </td>
+                <td>
+                    订单号
+                </td>
+                <td colspan="2">
+                    <input id="Text14" type="text" name="sContractNo" class="easyui-textbox" data-options="readonly:true"
+                        style="width: 120px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    已切<br />
+                    卷数
+                </td>
+                <td colspan="2">
+                    <input id="Text13" type="text" name="iCurtPartReelCount" class="easyui-numberbox"
+                        data-options="readonly:true,precision:0" style="width: 120px; height: 30px;" />
+                </td>
+                <td>
+                    来料<br />
+                    米数
+                </td>
+                <td colspan="2">
+                    <input id="Text1" type="text" name="fQty" class="easyui-numberbox" style="width: 120px;
+                        height: 30px;" data-options="readonly:true,precision:1" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    预分<br />
+                    卷数
+                </td>
+                <td colspan="2">
+                    <input id="Text11" type="text" name="iPlanPartReelCount" class="easyui-numberbox"
+                        data-options="readonly:true,precision:0" style="width: 120px; height: 30px;" />
+                </td>
+                <td>
+                    已切<br />
+                    米数
+                </td>
+                <td colspan="2">
+                    <input id="Text12" type="text" name="fReadyPartQty" class="easyui-numberbox" data-options="readonly:true,precision:1"
+                        style="width: 120px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td style="display: none;">
+                    打印数量
+                </td>
+                <td style="display: none;">
+                    <input id="Text16" type="text" name="printCount" class="easyui-numberbox" style="width: 120px;
+                        height: 40px;" />
+                    <iframe id="ifrpb" name="ifrpb" width="0" height="0"></iframe>
+                    <input id="txbNowDate" type="text" name="dNowDate" class="easyui-datebox" data-options="readonly:true"
+                        style="width: 120px; height: 30px;" />
+                    <input id="fProductWidth" name="fProductWidth" type="text" />
+                    <input id="fProductWeight" name="fProductWeight" type="text" />
+                </td>
+                <td colspan="6" style="text-align: left;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td>
+                                <input id="btnSaveMs" type="button" value="暂停" class="btnBigger" onclick="ClosePort()" />
+                            </td>
+                            <td rowspan="2">
+                                <input id="Button4" type="button" value="码表清零" class="btnBigger1" onclick="clearZero()" />
+                            </td>
+                            <td rowspan="2">
+                                <input id="btnFinish" type="button" value="缸号完成" class="btnBigger1" onclick="finishPart()" />
+                            </td>
+                            <td rowspan="2">
+                                <input id="btnSavePrint" type="button" value="保存打印" class="btnBigger1" onclick="saveAndPrint()" />
+                            </td>
+                            <td>
+                                <a href="#" onclick="previewNext()">预览</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <input id="btnSamplePrint" type="button" value="剪样" class="btnBigger" onclick="SamplePrint()" />
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6" style="text-align: left;">
+                </td>
+            </tr>
+        </table>
+        </form>
+    </div>
+    <div data-options="region:'center',border:false">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'west'" style="width: 220px;">
+                <div class="easyui-layout" data-options="fit:true,border:false">
+                    <div data-options="region:'center',border:false,split:true">
+                        <div class="easyui-tabs" data-options="fit:true,border:false">
+                            <div title="疵点记录" data-options="border:false">
+                                <table id="tabCdRec">
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-options="region:'south',border:false" style="height: 40px;">
+                        <table>
+                            <tr>
+                                <td>
+                                    <input id="btnRClear" type="button" class="btnBigger" onclick="deleteOrAbandonOrClear(3)"
+                                        value="清空" />
+                                </td>
+                                <td>
+                                    <input id="btnRDelete" type="button" class="btnBigger" onclick="deleteOrAbandonOrClear(1)"
+                                        value="删除" />
+                                </td>
+                                <td>
+                                    <input id="btnRAband" type="button" class="btnBigger" onclick="deleteOrAbandonOrClear(2)"
+                                        value="作废" />
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div data-options="region:'center',title:'添加疵点',collapsible:false,split:true">
+                <table class="centerTable">
+                    <tr>
+                        <td id="tdBtn1">
+                        </td>
+                        <td id="tdBtn2">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdBtn3">
+                        </td>
+                        <td id="tdBtn4">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdBtn5">
+                        </td>
+                        <td id="tdBtn6">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdBtn7">
+                        </td>
+                        <td id="tdBtn8">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdBtn9">
+                        </td>
+                        <td id="tdBtn10">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdBtn11">
+                        </td>
+                        <td id="tdBtn12">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div data-options="region:'south',title:'订单备注信息',split:true,collapsible:false" style="height: 100px;">
+        <textarea id="txaRemark" name="sCustomerAsk" style="width: 98%; height: 95%; background-color: #eee;
+            font-size: 24px; font-weight: bold; color: Red;" readonly="readonly">
+            
+        </textarea>
+    </div>
+    <div id="divSdOrderDD" class="easyui-window" title="选择订单" style="width: 800px; height: 500px;"
+        data-options="modal:true,collapsible:false,minimizable:false,maximizable:false,closed:true">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'north',border:false" style="height: 50px">
+                <table class="centerTable">
+                    <tr>
+                        <td>
+                            客户订单号
+                        </td>
+                        <td>
+                            <input id="txbSearchOrderNo" type="text" class="easyui-textbox" style="width: 120px;
+                                height: 35px;" />
+                        </td>
+                        <td>
+                            产品
+                        </td>
+                        <td>
+                            <input id="txbSearchCode" type="text" class="easyui-textbox" style="width: 120px;
+                                height: 35px;" />
+                        </td>
+                        <td>
+                            缸号
+                        </td>
+                        <td>
+                            <input id="txbSearchVatNo" type="text" class="easyui-textbox" style="width: 120px;
+                                height: 35px;" />
+                        </td>
+                        <td>
+                            <input id="Button17" type="button" value="查询" onclick="LoadSDOrderDD()" style="width: 80px;
+                                height: 35px;" />
+                        </td>
+                        <td>
+                            <input id="Button18" type="button" value="确定选择" onclick="selectSDOrderDD()" style="width: 100px;
+                                height: 35px;" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div data-options="region:'center',border:false">
+                <table id="tableSdOrderDD">
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="divFlaw" class="easyui-window" title="疵点登记" style="width: 300px; height: 250px;
+        text-align: center;" data-options="modal:true,collapsible:false,minimizable:false,maximizable:false,closed:true,onBeforeClose:flawWindowClose">
+        <form id="form2" method="get">
+        <table class="centerTable" style="text-align: center; margin: auto;">
+            <tr>
+                <td>
+                    原因
+                </td>
+                <td>
+                    <input id="txbFlawReason" class="easyui-textbox" data-options="readonly:true" type="text"
+                        style="width: 150px; height: 30px;" />
+                    <input id="txbSDOrderDDFlawDRecNo" name="iSDOrderDDFlawDRecNo" type="hidden" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    位置
+                </td>
+                <td>
+                    <input id="txbFlawPosition" class="easyui-numberbox" data-options="readonly:true,precision:1"
+                        type="text" style="width: 80px; height: 30px;" />
+                    <input id="Button5" type="button" class="btnPositionAdjust" value="+" />
+                    <input id="Button6" type="button" class="btnPositionAdjust" value="-" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    扣分
+                </td>
+                <td>
+                    <input id="txbFlawScroe" class="easyui-numberbox numkeyboard" data-options="readonly:true,precision:0"
+                        type="text" style="width: 150px; height: 30px;" />
+                </td>
+            </tr>
+            <tr>
+                <td id="tdDe">
+                    扣米数
+                </td>
+                <td>
+                    <input id="txbFlawDeMeter" class="easyui-numberbox numkeyboard" data-options="required:true,precision:1,onChange:flawDeMeterChange"
+                        type="text" style="width: 80px; height: 30px;" value="0.2" />
+                    <input id="Button7" type="button" class="btnDeAdjust" value="+" />
+                    <input id="Button8" type="button" class="btnDeAdjust" value="-" />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <input id="btnFlawClose" type="button" value="取消" class="btnBigger" onclick="$('#divFlaw').window('close');" />&nbsp;&nbsp;
+                    <input id="btnFlawConfirm" type="button" value="确定" class="btnBigger" onclick="flawConfirm()" />
+                </td>
+            </tr>
+        </table>
+        </form>
+    </div>
+    <div id="divCommPort" class="easyui-dialog" style="text-align: center; padding-top: 10px;"
+        data-options="top:50,closed:true,closable:true,title:'设置端口号',collapsible:false,minimizable:false,maximizable:false,modal:true,width:250,height:160,buttons:[{iconCls:'icon-save',text:'保存',handler:savePort},{iconCls:'icon-cancel',text:'取消',handler:portCancel}]">
+        <table style="margin: auto;">
+            <tr>
+                <td>
+                    端口号
+                </td>
+                <td>
+                    <input id="txbCommPort" class="easyui-numberspinner" data-options="precision:0,required:true"
+                        style="width: 100px;" type="text" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    机台号
+                </td>
+                <td>
+                    <input id="txbMachineID" class="easyui-textbox" data-options="required:true" style="width: 100px;"
+                        type="text" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divPb" style="display: none;">
+        <!--<iframe id="ifrpb0" name="ifrpb0" width="0" height="0"></iframe>-->
+        <iframe id="ifrpb1" name="ifrpb1" width="0" height="0"></iframe>
+        <!--<iframe id="ifrpb2" name="ifrpb2" width="0" height="0"></iframe>-->
+        <!--<iframe id="ifrpb3" name="ifrpb3" width="0" height="0"></iframe>-->
+        <!--<iframe id="ifrpb4" name="ifrpb4" width="0" height="0"></iframe>-->
+        <input id="txbMachine" type="text" name="sMachineID" class="easyui-combobox" data-options="valueField:'sMachineCode',textField:'sMachineCode',required:true"
+            style="width: 120px; height: 30px;" />
+    </div>
+    <!--<div id="divNumKeyboard" class="easyui-panel" title="数字键盘" style="width: 400px; height: 300px;
+        background: #fafafa;" data-options="closable:true,closed:true,collapsible:true,minimizable:false,maximizable:false,">
+        <table style="width: 100%; height: 100%;">
+            <tr>
+                <td>
+                    <input id="Button2" type="button" value="7" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button3" type="button" value="8" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button4" type="button" value="9" class="keyBoardNum" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <input id="Button5" type="button" value="4" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button6" type="button" value="5" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button7" type="button" value="6" class="keyBoardNum" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <input id="Button8" type="button" value="1" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button9" type="button" value="2" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button10" type="button" value="3" class="keyBoardNum" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <input id="Button11" type="button" value="0" class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button12" type="button" value="." class="keyBoardNum" />
+                </td>
+                <td>
+                    <input id="Button13" type="button" value="del" class="keyBoardNum" />
+                </td>
+            </tr>
+        </table>
+    </div>-->
+</body>
+</html>

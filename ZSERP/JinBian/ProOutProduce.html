@@ -1,0 +1,1184 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <link href="/Base/JS/easyui_new/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui_new/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script src="/Base/JS/approval.js"></script>
+    <script src="/Base/JS/LodopFuncs.js"></script>
+    <script src="/Base/JS2/hxLodop.js"></script>
+    <script type="text/javascript">
+        var userid = "";
+        var sJobRole = "";
+        var serialData = [];
+        var resultSerialD = [];
+        var TechTmp = "";
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+            }
+        });
+
+        function confirmSerial() { 
+            var TechRows = $("#tabSerial").datagrid("getRows");
+            $.each(TechRows, function (index, o) {
+                var rowIndex = $("#tabSerial").datagrid("getRowIndex", o);
+                $("#tabSerial").datagrid("endEdit", rowIndex);
+            }); 
+        }
+
+        function addSerial() { 
+            var iSerial = $("#tabSerial").datagrid("getRows").length + 1;
+            var appendRow = { iSerial: iSerial };
+            $("#tabSerial").datagrid("appendRow", appendRow);
+            var allRow = $("#tabSerial").datagrid("getRows");
+            $("#tabSerial").datagrid("beginEdit", allRow.length - 1);
+        }
+        function deleteSerial() {
+            var checkedRow = $("#tabSerial").datagrid("getChecked");
+            if (checkedRow) {
+                $.messager.confirm("确认删除吗？", "您确认删除所选择项目吗？", function (r) {
+                    if (r) {
+                        for (var i = 0; i < checkedRow.length; i++) {
+                            var iRecNo = checkedRow[i].iRecNo;
+                            for (var j = 0; j < serialData.length; j++) {
+                                if (iRecNo == serialData[j].iRecNo) {
+                                    serialData.splice(j, 1);
+                                    break;
+                                }
+                            }
+                            var rowindex = $("#tabSerial").datagrid("getRowIndex", checkedRow[i]);
+                            $("#tabSerial").datagrid("deleteRow", rowindex);
+                        }
+                    }
+                })
+            }
+        }
+
+        $(function () {
+            $.fn.numberbox.defaults.filter = function (e) {
+                var opts = $(this).numberbox('options');
+                var s = $(this).numberbox('getText');
+                if (e.which == 45) {    //-
+                    return (s.indexOf('-') == -1 ? true : false);
+                }
+                var c = String.fromCharCode(e.which);
+                if (c == opts.decimalSeparator) {
+                    return (s.indexOf(c) == -1 ? true : false);
+                } else if (c == opts.groupSeparator) {
+                    return true;
+                } else if ((e.which >= 48 && e.which <= 57 && e.ctrlKey == false && e.shiftKey == false) || e.which == 0 || e.which == 8) {
+                    return true;
+                } else if (e.ctrlKey == true && (e.which == 99 || e.which == 118)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            var sqlObjMachine = {
+                TableName: "bscDataMachine",
+                Fields: "sMachineCode",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "like",
+                        Value: "'02%'",
+			            LinkOprt: "or"
+                    },
+		            {
+                        Field: "sClassID",
+                        ComOprt: "like",
+                        Value: "'04%'"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "sMachineCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultMachine = SqlGetData(sqlObjMachine);
+
+            $("#tabSerial").datagrid({
+                fit: true,
+                border: false,
+                columns: [
+                    [
+                        { field: "__cb", checkbox: true, width: 40, align: "center" },
+                        {
+                            field: "iSerial", title: "序号", width: 40, align: "center",
+                            editor: { type: "numberbox", options: { height: 35 } }
+                        },
+                        {
+                            field: "iBscDataProcessesDRecNo", title: "项目名", width: 80, align: "center",
+                            editor: {
+                                type: "combobox",
+                                options: {
+                                    valueField: "iBscDataProcessesDRecNo", textField: "sProjectName", height: 35, data: resultSerialD,
+                                    onSelect: function (r) {
+                                        var rowIndex = $(this).parent().parent().parent().parent().parent().parent().parent().prevAll().length;
+                                        var rows = $('#tabSerial').datagrid('getRows');
+                                        var sqlObjValue = {
+                                            TableName: "BscDataProcessesDD",
+                                            Fields: "sValue",
+                                            SelectAll: "True",
+                                            Filters: [
+                                                {
+                                                    Field: "iMainRecNo",
+                                                    ComOprt: "=",
+                                                    Value: "'" + r.iBscDataProcessesDRecNo +"'"
+                                                }
+                                            ],
+                                            Sorts: [
+                                                {
+                                                    SortName: "iSerial",
+                                                    SortOrder: "asc"
+                                                }
+                                            ]
+                                        }
+                                        var sValueData = SqlGetData(sqlObjValue);
+                                        if (sValueData.length > 0) {
+                                            var editors = $("#tabSerial").datagrid('getEditor', { index: rowIndex, field: 'sValue' });
+                                            $(editors.target).combobox('loadData', sValueData);
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            field: "sValue", title: "值", width: 80, align: "center",
+                            editor: {
+                                type: "combobox",
+                                options: {
+                                    valueField: "sValue", textField: "sValue", height: 35, data:[]
+                                }
+                            }
+                        }
+                    ]
+                ],
+                remoteSort: false,
+                toolbar: "#divSerialMenu"
+            })
+
+            var sqlObjManuCustomer = {
+                TableName: "bscDataCustomer",
+                Fields: "sCustShortName,iRecNo",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "(sComtypeCode",
+                        ComOprt: "like",
+                        Value: "'%加工%'",
+                        LinkOprt: "or"
+                    },
+                    {
+                        Field: "sComtypeCode",
+                        ComOprt: "like",
+                        Value: "'%染厂%')",
+                        LinkOprt: "and"
+                    },
+                    {
+                        Field: "iCustType",
+                        ComOprt: "=",
+                        Value: "1"
+                    }
+                ],
+                Sorts: [
+                    {
+                        SortName: "iInner",
+                        SortOrder: "desc"
+                    }
+                ]
+            }
+            var resultManuCustomer = SqlGetData(sqlObjManuCustomer);
+
+            var sqlObjUnitID = {
+                TableName: "BscDataListD",
+                Fields: "sCode AS sUnitID,sName",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sClassID",
+                        ComOprt: "=",
+                        Value: "'OrderUnit'" 
+                    } 
+                ] 
+            }
+            var resultUnitID = SqlGetData(sqlObjUnitID);
+
+            var sqlObjSerial = {
+                TableName: "BscDataProcessesM",
+                Fields: "sProcessesName",
+                SelectAll: "True",
+                Sorts: [
+                    {
+                        SortName: "sProcessesCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var resultSerial = SqlGetData(sqlObjSerial);
+            $("#txbMenuSerial").combobox("loadData", resultSerial);
+
+            $("#tabSDContractD").datagrid(
+                {
+                    fit: true,
+                    border: false,
+                    columns: [
+                        [
+                            { field: "__ck", width: 40, checkbox: true, rowspan: 2 },
+                            { field: "sFinish", title: "是否<br/>完成", align: "center", width: 40, rowspan: 2 }, 
+                            { field: "sOrderNo", title: "订单号", align: "center", width: 80, rowspan: 2 }, 
+                            { field: "sContractNo", title: "合同号", align: "center", width: 80, rowspan: 2 }, 
+                            { field: "sProcessesName", title: "工序", align: "center", width: 50, rowspan: 2 }, 
+                            { field: "sDate", title: "下单日期", align: "center", width: 80, rowspan: 2 }, 
+                            { field: "sCode", title: "产品编号", align: "center", width: 70, rowspan: 2 },
+                            { field: "sBscDataFabCode", title: "坯布编号", align: "center", width: 70, rowspan: 2 },
+                            { field: "sColorID", title: "色号", align: "center", width: 80, rowspan: 2 }, 
+                            { field: "fProductWidth", title: "幅宽", align: "center", width: 60, rowspan: 2 }, 
+                            { field: "sProUnitID", title: "销售<br />单位", align: "center", width: 40, rowspan: 2 }, 
+                            { field: "fPlanQty", title: "订单数量", align: "center", width: 70, rowspan: 2 }, 
+                            { field: "fQty", title: "已排数量", align: "center", width: 60, rowspan: 2 }, 
+                            { field: "fNoQty", title: "未排数量", align: "center", width: 60, rowspan: 2 }, 
+                            { field: "fEstShkRate", title: "预估<br/>缩率(%)", align: "center", width: 50, rowspan: 2 }, 
+                            { title: "本次加工", align: "center", colspan: 11 }, 
+                            { field: "iRecNo", hidden: true, rowspan: 2 }, 
+                            { field: "iBscDataMatRecNo", hidden: true, rowspan: 2 }, 
+                            { field: "iSDOrderDRecNo", hidden: true, rowspan: 2 }, 
+                            { field: "iBscDataProcessMRecNo", hidden: true, rowspan: 2 }, 
+                            { field: "iBscDataColorRecNo", hidden: true, rowspan: 2 }, 
+                            { field: "iSDOrderMRecNo", hidden: true, rowspan: 2 } , 
+                            {
+                                field: "sReMark", title: "备注", align: "center", width: 100, rowspan: 2,
+                                editor: { type: "textarea", options: { width: 200, height: 35 } }
+                            },  
+                            { field: "sName", title: "产品名称", align: "center", width: 80, rowspan: 2 },
+                            { field: "sElements", title: "成分", align: "center", width: 80, rowspan: 2 },
+                            { field: "fProductWeight", title: "克重", align: "center", width: 80, rowspan: 2 }
+                        ],
+                        [
+                            {
+                                field: "iIn", title: "加工<br />完成<br />型号", align: "center", width: 40,
+                                editor: { type: "checkbox", options: { on: '√', off: '' } }
+                            }, 
+                            {
+                                field: "iOut", title: "加工<br />出库<br />型号", align: "center", width: 40,
+                                editor: { type: "checkbox", options: { on: '√', off: '' } }
+                            },   
+                            {
+                                field: "sUnitID", title: "发出<br />单位", align: "center", width: 50,
+                                editor: {
+                                    type: "combobox", options: {
+                                        width: 40, height: 35, required: true,
+                                        valueField: "sUnitID", textField: "sName", data: resultUnitID
+                                    }
+                                }
+                            }, 
+                            {
+                                field: "sAccUnitID", title: "结算<br />单位", align: "center", width: 50,
+                                editor: {
+                                    type: "combobox", options: {
+                                        width: 40, height: 35, required: true,
+                                        valueField: "sUnitID", textField: "sName", data: resultUnitID
+                                    }
+                                }
+                            }, 
+                            {
+                                field: "iManuBscDataCustomerRecNo", title: "加工商", align: "center", width: 110,
+                                editor: {
+                                    type: "combobox", options: {
+                                        width: 60, height: 35, required: true,
+                                        valueField: "iRecNo", textField: "sCustShortName", data: resultManuCustomer 
+                                    }
+                                }
+                            }, 
+                            {
+                                field: "fOutQty", title: "发出数量", align: "center", width: 80,
+                                editor: {
+                                    type: "numberbox", options: {
+                                        width: 80, height: 35, required: true, precision: 2
+                                    }
+                                }
+                            }, 
+                            {
+                                field: "fTheProduceQty", title: "加工数量", align: "center", width: 80,
+                                editor: {
+                                    type: "numberbox", options: {
+                                        width: 80, height: 35, required: true, precision: 2,
+                                        onChange: function (newValue, oldValue) {
+                                            var rowIndex = $(this).parent().parent().parent().parent().parent().parent().parent().prevAll().length;
+                                            var rows = $('#tabSDContractD').datagrid('getRows');
+
+                                            var editors = $("#tabSDContractD").datagrid('getEditors', rowIndex);
+                                            var loadEditor = editors[8];
+                                            var fTheProduceQty = newValue;
+                                            var fPrice = editors[7].target.numberbox('getValue');
+                                            fTheProduceQty = isNaN(Number(fTheProduceQty)) ? 0 : Number(fTheProduceQty);
+                                            fPrice = isNaN(Number(fPrice)) ? 0 : Number(fPrice);
+                                            var fTotal = fTheProduceQty * fPrice;
+
+                                            loadEditor.target.numberbox('setValue', fTotal);
+
+                                        }  
+                                    }
+                                }
+                            }, 
+                            {
+                                field: "fPrice", title: "加工单价", align: "center", width: 80,
+                                editor: {
+                                    type: "numberbox", options: {
+                                        width: 80, height: 35, required: true, precision: 2,
+                                        onChange: function (newValue, oldValue) {
+                                            var rowIndex = $(this).parent().parent().parent().parent().parent().parent().parent().prevAll().length;
+                                            var rows = $('#tabSDContractD').datagrid('getRows');
+
+                                            var editors = $("#tabSDContractD").datagrid('getEditors', rowIndex);
+                                            var loadEditor = editors[8];
+                                            var fTheProduceQty = editors[6].target.numberbox('getValue');
+                                            var fPrice = newValue;
+                                            fTheProduceQty = isNaN(Number(fTheProduceQty)) ? 0 : Number(fTheProduceQty);
+                                            fPrice = isNaN(Number(fPrice)) ? 0 : Number(fPrice);
+                                            var fTotal = fTheProduceQty * fPrice;
+
+                                            loadEditor.target.numberbox('setValue', fTotal);
+
+                                        }  
+                                    }
+                                }
+                            },  
+                            {
+                                field: "fTotal", title: "加工金额", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35, disabled: true, precision: 2 } }
+                            },
+                            {
+                                field: "dBeginDate", title: "计划开始日期", align: "center", width: 100,
+                                editor: { type: "datebox", options: { width: 100, required: true, height: 35 } }
+                            },
+                            {
+                                field: "dDeliveryDate", title: "计划交期", align: "center", width: 100,
+                                editor: { type: "datebox", options: { width: 100, required: true, height: 35 } }
+                            }
+                        ]
+                    ], 
+                    rownumbers: true,
+                    pagination: true,
+                    pageSize: 15,
+                    pageList: [15, 30, 50, 100],
+                    remoteSort: false,
+                    loadFilter: pagerFilter,
+                    onLoadSuccess: function (data) {
+                        $.each(data.rows, function (index, o) {
+                            $("#tabSDContractD").datagrid("beginEdit", index);
+                        })
+                    }
+                })
+            
+            var sqlObjRole = {
+                TableName: "BscDataPerson",
+                Fields: "sJobRole",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sCode",
+                        ComOprt: "=",
+                        Value: "'" + userid + "'"
+                    }
+                ]
+            }
+            var resultRole = SqlGetData(sqlObjRole);
+            if (resultRole.length > 0) {
+                sJobRole = resultRole[0].sJobRole;
+            }
+        })
+
+        function loadSDContractD() {
+            var filters = [{
+                Field: "1",
+                ComOprt: "=",
+                Value: "1"
+            }];
+
+            var iType = null;
+  
+            var checked = $("#ckbFinish")[0].checked;
+            if (checked == false) {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "isnull(sFinish,'')",
+                        ComOprt: "=",
+                        Value: "''"
+                    }
+                )
+            } else {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "isnull(sFinish,'')",
+                        ComOprt: "=",
+                        Value: "'是'"
+                    }
+                )
+            }
+            var Serial = $("#txbMenuSerial").combobox("getValue");
+            if (Serial != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sProcessesName",
+                        ComOprt: "=",
+                        Value: "'" + Serial + "'"
+                    }
+                )
+                if (Serial != "染色") {
+                    $("#tabSDContractD").datagrid('getColumnOption', "fOutQty").editor.options.required = false;
+                    $("#tabSDContractD").datagrid("hideColumn", "fOutQty");
+                } else {
+                    $("#tabSDContractD").datagrid('getColumnOption', "fOutQty").editor.options.required = true;
+                    $("#tabSDContractD").datagrid("showColumn", "fOutQty");
+                }
+            } else {
+                alert("请先选择工序");
+                return false;
+            }
+            var sContractNo = $("#txbMenuContractNo").textbox("getValue");
+            if (sContractNo != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sContractNo",
+                        ComOprt: "like",
+                        Value: "'%" + sContractNo + "%'"
+                    }
+                    )
+            }
+            var sCode = $("#txbMenuCode").textbox("getValue");
+            if (sCode != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sBscDataFabCode",
+                        ComOprt: "like",
+                        Value: "'%" + sCode + "%'"
+                    }
+                    )
+            }
+
+            var sColorID = $("#txbMenuColorID").textbox("getValue");
+            if (sColorID != "") {
+                filters[filters.length - 1].LinkOprt = "and";
+                filters.push(
+                    {
+                        Field: "sColorID",
+                        ComOprt: "like",
+                        Value: "'%" + sColorID + "%'"
+                    }
+                )
+            }
+             
+            var sqlObj = {
+                TableName: "vwSDContractDProcessDData ",
+                Fields: "*,iOut=case when iBscDataProcessMRecNo=6 or iBscDataProcessMRecNo=12 then '' else '√' end,iIn=case when iBscDataProcessMRecNo=12 then '' else '√' end",
+                SelectAll: "True",
+                Filters: filters,
+                Sorts: [
+                    {
+                        SortName: "iMainRecNo",
+                        SortOrder:"desc"
+                    }, {
+                        SortName: "sBscDataFabCode",
+                        SortOrder: "asc"
+                    }
+                ]
+            }
+            var result = SqlGetData(sqlObj);
+            $("#tabSDContractD").datagrid("loadData", result);
+
+            if (result.length > 0) {
+                var sqlObj2 = {
+                    TableName: "BscDataProcessesD ",
+                    Fields: "iSerial,iRecNo iBscDataProcessesDRecNo",
+                    SelectAll: "True",
+                    Filters: [{ 
+                            Field: "iMainRecNo",
+                            ComOprt: "=",
+                            Value: result[0].iBscDataProcessMRecNo 
+                    }],
+                    Sorts: [
+                        {
+                            SortName: "iSerial",
+                            SortOrder: "asc"
+                        }
+                    ]
+                }
+                var result2 = SqlGetData(sqlObj2);
+                $("#tabSerial").datagrid("loadData", result2);
+            } else {
+                $("#tabSerial").datagrid("loadData", []);
+            }
+            //var allRows = $("#tabSDContractD").datagrid("getRows"); 
+        }
+
+        function batchBuild() {
+            var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+            if (checkedRows.length > 0) {
+                $.messager.confirm("确定生成吗？", "确定生成吗？", function (r) {
+                    if (r) {
+                        var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+                        var isEndSuccess = true; 
+                        for (var i = 0; i < checkedRows.length; i++) {  
+                            var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", checkedRows[i]); 
+                            $("#tabSDContractD").datagrid("endEdit", rowIndex); 
+                            var ed2 = $('#tabSDContractD').datagrid('getEditor', { index: rowIndex, field: 'iManuBscDataCustomerRecNo' });  
+                             
+                            var fOutQty = checkedRows[i].fOutQty;
+                            fOutQty = isNaN(Number(fOutQty)) ? 0 : Number(fOutQty);
+                            if (fOutQty == 0 && checkedRows[i].iBscDataProcessMRecNo == 6) {
+                                alert("染色需要填写需求坯布数量");
+                                return false;
+                            }
+                            if (ed2 && ed2.target) {
+                                isEndSuccess = false;
+                                while ((index - 1) >= 0) {
+                                    var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", checkedRows[index - 1]);
+                                    $("#tabSDContractD").datagrid("endEdit", rowIndex);
+                                    index--;
+                                }
+                                break;
+                            }
+                        }
+                        if (isEndSuccess == false) {
+                            MessageShow("存在必填项未填", "存在必填项未填,请先填写好必填项");
+                            return false;
+                        }
+                        
+                        //行之间用〓，列之间§
+                        var Str = "";
+                        var TechStr = "";
+                        var checkedRows = $("#tabSDContractD").datagrid("getChecked"); 
+                        var TechRows = $("#tabSerial").datagrid("getRows"); 
+                        for (var i = 0; i < checkedRows.length; i++) {
+                            var aa = checkedRows[i].isReelCut;  
+                        }
+                        $.each(checkedRows, function (index, o) {
+                            Str += o.iRecNo + "§" + o.sElements + "§" + o.fProductWeight + "§" + o.fProductWidth + "§" + o.iBscDataMatRecNo + "§" + o.iSDOrderDRecNo + "§" + o.iSDOrderMRecNo + "§" + o.iBscDataProcessMRecNo + "§" + o.iBscDataColorRecNo + "§" + o.iIn + "§" + o.iOut + "§" + o.sUnitID + "§" + o.sAccUnitID + "§" + o.iManuBscDataCustomerRecNo + "§" + o.fOutQty + "§" + o.fTheProduceQty + "§" + o.fPrice + "§" + o.fTotal + "§" + o.sReMark + "§" + o.dBeginDate + "§" + o.dDeliveryDate + "〓";
+                        });
+                        if (Str != "") {
+                            Str = Str.substr(0, Str.length - 1);
+                        } 
+
+                        $.each(TechRows, function (index, o) {
+                            TechStr += o.iBscDataProcessesDRecNo + "§" + o.sValue + "〓";
+                        });
+                        if (TechStr != "") {
+                            TechStr = TechStr.substr(0, TechStr.length - 1);
+                        } 
+                        if (TechStr == TechTmp && TechTmp != "") {
+                            $.messager.confirm("确定生成吗？", "当前工序要求和上一次生成相同,确定生成吗？", function (r) {
+                                if (r) {
+                                    var jsonobj = {
+                                        StoreProName: "SpProOutProduceBatchBuild",
+                                        StoreParms: [{
+                                            ParmName: "@Str",
+                                            Value: Str,
+                                            Size: -1
+                                        }, {
+                                            ParmName: "@TechStr",
+                                            Value: TechStr,
+                                            Size: -1
+                                        },
+                                        {
+                                            ParmName: "@sUserID",
+                                            Value: userid
+                                        }
+                                        ]
+                                    }
+                                    var result = SqlStoreProce(jsonobj);
+                                    var resultArr = result.split(':');
+                                    if (resultArr[0] == "1") {
+                                        if (resultArr[1] != "") {
+                                            var iRecNoArr = resultArr[1].split(";");
+                                            for (var i = 0; i < iRecNoArr.length; i++) {
+                                                approval.submit("8902", iRecNoArr[i]);
+                                            }
+                                            for (var i = checkedRows.length - 1; i >= 0; i--) {
+                                                var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", checkedRows[i]);
+                                                var iBscDataProcessMRecNo = checkedRows[i].iBscDataProcessMRecNo;
+                                                var iIn = "";
+                                                var iOut = "";
+                                                if (iBscDataProcessMRecNo != 6 && iBscDataProcessMRecNo != 12) {
+                                                    iOut = "√";
+                                                }
+                                                if (iBscDataProcessMRecNo != 12) {
+                                                    iIn = "√";
+                                                }
+
+                                                var sSaleUnit = checkedRows[i].sProUnitID;
+                                                var sAccUnit = checkedRows[i].sAccUnitID;
+                                                var fQty = checkedRows[i].fQty;
+                                                var fNoQty = checkedRows[i].fNoQty;
+                                                var fProQty = checkedRows[i].fTheProduceQty;
+                                                var fProductWidth = checkedRows[i].fProductWidth;
+                                                var fProductWeight = checkedRows[i].fProductWeight;
+                                                fQty = isNaN(Number(fQty)) ? 0 : Number(fQty);
+                                                fNoQty = isNaN(Number(fNoQty)) ? 0 : Number(fNoQty);
+                                                fProQty = isNaN(Number(fProQty)) ? 0 : Number(fProQty);
+                                                fProductWidth = isNaN(Number(fProductWidth)) ? 0 : Number(fProductWidth);
+                                                fProductWeight = isNaN(Number(fProductWeight)) ? 0 : Number(fProductWeight);
+
+                                                if (sSaleUnit == "码") {
+                                                    sSaleUnit = "2";
+                                                } else if (sSaleUnit == "KG") {
+                                                    sSaleUnit = "0";
+                                                } else {
+                                                    sSaleUnit = "1";
+                                                }
+                                                if (sAccUnit == "1" && sSaleUnit == "1") {
+                                                    fQty += fProQty;
+                                                    fNoQty -= fProQty;
+                                                } else if (sAccUnit == "2" && sSaleUnit == "1") {
+                                                    fQty += fProQty * 0.9144;
+                                                    fNoQty -= fProQty * 0.9144;
+                                                } else if (sAccUnit == "0" && sSaleUnit == "1") {
+                                                    fQty += fProQty * 1000 * 100 / fProductWidth / fProductWeight;
+                                                    fNoQty -= fProQty * 1000 * 100 / fProductWidth / fProductWeight;
+                                                } else if (sAccUnit == "1" && sSaleUnit == "2") {
+                                                    fQty += fProQty / 0.9144;
+                                                    fNoQty -= fProQty / 0.9144;
+                                                } else if (sAccUnit == "2" && sSaleUnit == "2") {
+                                                    fQty += fProQty;
+                                                    fNoQty -= fProQty;
+                                                } else if (sAccUnit == "0" && sSaleUnit == "2") {
+                                                    fQty += fProQty * 1000 * 100 / fProductWidth / fProductWeight / 0.9144;
+                                                    fNoQty -= fProQty * 1000 * 100 / fProductWidth / fProductWeight / 0.9144;
+                                                } else if (sAccUnit == "1" && sSaleUnit == "0") {
+                                                    fQty += fProQty * fProductWidth * fProductWeight / 1000 / 100;
+                                                    fNoQty -= fProQty * fProductWidth * fProductWeight / 1000 / 100;
+                                                } else if (sAccUnit == "2" && sSaleUnit == "0") {
+                                                    fQty += fProQty * fProductWidth * fProductWeight / 1000 / 100 / 0.9144;
+                                                    fNoQty -= fProQty * fProductWidth * fProductWeight / 1000 / 100 / 0.9144;
+                                                } else if (sAccUnit == "0" && sSaleUnit == "0") {
+                                                    fQty += fProQty;
+                                                    fNoQty -= fProQty;
+                                                }
+
+                                                if (fNoQty <= 0) {
+                                                    $("#tabSDContractD").datagrid("deleteRow", rowIndex);
+                                                } else {
+                                                    fQty = fQty.toFixed(2);
+                                                    fNoQty = fNoQty.toFixed(2);
+                                                    $("#tabSDContractD").datagrid("updateRow", { index: rowIndex, row: { fQty: fQty, fNoQty: fNoQty, iOut: iOut, iIn: iIn, sUnitID: "", sAccUnitID: "", iManuBscDataCustomerRecNo: "", fOutQty: "", fTheProduceQty: "", fPrice: "", fTotal: "", dBeginDate: "", dDeliveryDate: "" } });
+                                                    $("#tabSDContractD").datagrid("beginEdit", rowIndex);
+                                                }
+                                                TechTmp = TechStr;
+                                            };
+                                        }
+                                    }
+                                    else if (resultArr[0] == "0") {
+                                        MessageShow("错误", resultArr[1]);
+                                        $.each(checkedRows, function (index, o) {
+                                            var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", o);
+                                            $("#tabSDContractD").datagrid("beginEdit", rowIndex);
+                                        });
+                                    }
+                                }
+                            })
+                        } else {
+                            var jsonobj = {
+                                StoreProName: "SpProOutProduceBatchBuild",
+                                StoreParms: [{
+                                    ParmName: "@Str",
+                                    Value: Str,
+                                    Size: -1
+                                }, {
+                                    ParmName: "@TechStr",
+                                    Value: TechStr,
+                                    Size: -1
+                                },
+                                {
+                                    ParmName: "@sUserID",
+                                    Value: userid
+                                }
+                                ]
+                            }
+                            var result = SqlStoreProce(jsonobj);
+                            var resultArr = result.split(':');
+                            if (resultArr[0] == "1") {
+                                if (resultArr[1] != "") {
+                                    var iRecNoArr = resultArr[1].split(";");
+                                    for (var i = 0; i < iRecNoArr.length; i++) {
+                                        approval.submit("8902", iRecNoArr[i]);
+                                    }
+                                    for (var i = checkedRows.length - 1; i >= 0; i--) {
+                                        var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", checkedRows[i]);
+                                        var iBscDataProcessMRecNo = checkedRows[i].iBscDataProcessMRecNo;
+                                        var iIn = "";
+                                        var iOut = "";
+                                        if (iBscDataProcessMRecNo != 6 && iBscDataProcessMRecNo != 12) {
+                                            iOut = "√";
+                                        }
+                                        if (iBscDataProcessMRecNo != 12) {
+                                            iIn = "√";
+                                        }
+
+                                        var sSaleUnit = checkedRows[i].sProUnitID;
+                                        var sAccUnit = checkedRows[i].sAccUnitID;
+                                        var fQty = checkedRows[i].fQty;
+                                        var fNoQty = checkedRows[i].fNoQty;
+                                        var fProQty = checkedRows[i].fTheProduceQty;
+                                        var fProductWidth = checkedRows[i].fProductWidth;
+                                        var fProductWeight = checkedRows[i].fProductWeight;
+                                        fQty = isNaN(Number(fQty)) ? 0 : Number(fQty);
+                                        fNoQty = isNaN(Number(fNoQty)) ? 0 : Number(fNoQty);
+                                        fProQty = isNaN(Number(fProQty)) ? 0 : Number(fProQty);
+                                        fProductWidth = isNaN(Number(fProductWidth)) ? 0 : Number(fProductWidth);
+                                        fProductWeight = isNaN(Number(fProductWeight)) ? 0 : Number(fProductWeight);
+
+                                        if (sSaleUnit == "码") {
+                                            sSaleUnit = "2";
+                                        } else if (sSaleUnit == "KG") {
+                                            sSaleUnit = "0";
+                                        } else {
+                                            sSaleUnit = "1";
+                                        }
+                                        if (sAccUnit == "1" && sSaleUnit == "1") {
+                                            fQty += fProQty;
+                                            fNoQty -= fProQty;
+                                        } else if (sAccUnit == "2" && sSaleUnit == "1") {
+                                            fQty += fProQty * 0.9144;
+                                            fNoQty -= fProQty * 0.9144;
+                                        } else if (sAccUnit == "0" && sSaleUnit == "1") {
+                                            fQty += fProQty * 1000 * 100 / fProductWidth / fProductWeight;
+                                            fNoQty -= fProQty * 1000 * 100 / fProductWidth / fProductWeight;
+                                        } else if (sAccUnit == "1" && sSaleUnit == "2") {
+                                            fQty += fProQty / 0.9144;
+                                            fNoQty -= fProQty / 0.9144;
+                                        } else if (sAccUnit == "2" && sSaleUnit == "2") {
+                                            fQty += fProQty;
+                                            fNoQty -= fProQty;
+                                        } else if (sAccUnit == "0" && sSaleUnit == "2") {
+                                            fQty += fProQty * 1000 * 100 / fProductWidth / fProductWeight / 0.9144;
+                                            fNoQty -= fProQty * 1000 * 100 / fProductWidth / fProductWeight / 0.9144;
+                                        } else if (sAccUnit == "1" && sSaleUnit == "0") {
+                                            fQty += fProQty * fProductWidth * fProductWeight / 1000 / 100;
+                                            fNoQty -= fProQty * fProductWidth * fProductWeight / 1000 / 100;
+                                        } else if (sAccUnit == "2" && sSaleUnit == "0") {
+                                            fQty += fProQty * fProductWidth * fProductWeight / 1000 / 100 / 0.9144;
+                                            fNoQty -= fProQty * fProductWidth * fProductWeight / 1000 / 100 / 0.9144;
+                                        } else if (sAccUnit == "0" && sSaleUnit == "0") {
+                                            fQty += fProQty;
+                                            fNoQty -= fProQty;
+                                        }
+
+                                        if (fNoQty <= 0) {
+                                            $("#tabSDContractD").datagrid("deleteRow", rowIndex);
+                                        } else {
+                                            $("#tabSDContractD").datagrid("updateRow", { index: rowIndex, row: { fQty: fQty, fNoQty: fNoQty, iOut: iOut, iIn: iIn, sUnitID: "", sAccUnitID: "", iManuBscDataCustomerRecNo: "", fOutQty: "", fTheProduceQty: "", fPrice: "", fTotal: "", dBeginDate: "", dDeliveryDate: "" } });
+                                            $("#tabSDContractD").datagrid("beginEdit", rowIndex);
+                                        }
+                                        TechTmp = TechStr;
+                                    };
+                                }
+                            }
+                            else if (resultArr[0] == "0") {
+                                MessageShow("错误", resultArr[1]);
+                                $.each(checkedRows, function (index, o) {
+                                    var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", o);
+                                    $("#tabSDContractD").datagrid("beginEdit", rowIndex);
+                                });
+                            }
+                        }
+                    } 
+                }) 
+            } else {
+                MessageShow("请选择行", "请选择行");
+            }
+        }
+
+        function doFinish() {
+            var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+            if (checkedRows.length > 0) {
+                $.messager.confirm("您确认标记完成吗?", "您确认标记所选行安排完成吗?", function (r) {
+                    if (r) {
+                        var RecNoStr = "";
+                        $.each(checkedRows, function (index, o) {
+                            RecNoStr += o.iRecNo + ","
+                        })
+                        RecNoStr = RecNoStr.substr(0, RecNoStr.length - 1);
+                        var jsonobj = {
+                            StoreProName: "SpSDContractDArrFinish",
+                            StoreParms: [{
+                                ParmName: "@sRecNoStr",
+                                Value: RecNoStr,
+                                Size: -1
+                            }, {
+                                ParmName: "@iType",
+                                Value: 1
+                            }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            MessageShow("错误", result);
+                        }
+                        else {
+                            MessageShow("成功", "标记成功");
+                            for (var i = checkedRows.length; i >= 0; i--) {
+                                var rowIndex = $('#tabSDContractD').datagrid('getRowIndex', deletedData[i]);
+                                $('#tabSDContractD').datagrid('deleteRow', rowIndex);
+                            } 
+                        }
+
+                    }
+                })
+            }
+        }
+
+        function doFill() {
+            var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+            if (checkedRows.length > 1) {
+                var rowIndexTmp = 0;
+                var editorsTmp;
+                
+                var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", checkedRows[0]);
+                var editors = $("#tabSDContractD").datagrid('getEditors', rowIndex);
+                var iIn = editors[2].target.combobox('getValue'); 
+                var iOut = editors[3].target.combobox('getValue'); 
+                var iManuBscDataCustomerRecNo = editors[4].target.combobox('getValue'); 
+                var dBeginDate = editors[9].target.datebox('getValue');
+                var dDeliveryDate = editors[10].target.datebox('getValue');
+                for (var i = 1; i < checkedRows.length; i++) {
+                    rowIndexTmp= $("#tabSDContractD").datagrid("getRowIndex", checkedRows[i]);
+                    editorsTmp = $("#tabSDContractD").datagrid('getEditors', rowIndexTmp);
+                    editorsTmp[2].target.combobox('setValue', iIn);
+                    editorsTmp[3].target.combobox('setValue', iOut); 
+                    editorsTmp[4].target.combobox('setValue', iManuBscDataCustomerRecNo); 
+                    editorsTmp[9].target.datebox('setValue', dBeginDate);
+                    editorsTmp[10].target.datebox('setValue', dDeliveryDate);
+                }
+            } else {
+                alert("填充至少选择两行");
+            }
+        }
+
+        function doSave() {
+            var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+            if (checkedRows.length > 0) {
+                $.messager.confirm("您确认保存吗?", "您确认保存预分机台吗?", function (r) {
+                    if (r) {
+                        var RecNoStr = "";
+                        var MachineIDStr = "";
+                        $.each(checkedRows, function (index, o) {
+                            var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", o);
+                            var ed = $('#tabSDContractD').datagrid('getEditor', { index: rowIndex, field: 'sMachineID' });
+                            RecNoStr += o.iRecNo + ","; ;
+                            MachineIDStr += $(ed.target).textbox("getValue") + ",";
+
+                        })
+
+                        var jsonobj = {
+                            StoreProName: "SpSDContractDUpdateMachineID",
+                            StoreParms: [{
+                                ParmName: "@sRecNoStr",
+                                Value: RecNoStr,
+                                Size: -1
+                            }, {
+                                ParmName: "@MachineIDStr",
+                                Value: MachineIDStr,
+                                Size: -1
+                            }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            MessageShow("错误", result);
+                        }
+                        else {
+                            MessageShow("成功", "保存成功");
+                            loadSDContractD();
+                        }
+                        $.each(checkedRows, function (index, o) {
+                            var rowIndex = $("#tabSDContractD").datagrid("getRowIndex", o);
+                            $("#tabSDContractD").datagrid("beginEdit", rowIndex);
+                        });
+                    }
+                })
+            }
+        }
+
+        function MessageShow(title, message) {
+            $.messager.show({
+                timeout: 2000,
+                title: title,
+                msg: "<span style='color:red;font-weight:bold;'>" + message + "</span>",
+                showType: 'show',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+
+        function pagerFilter(data) {
+            if (typeof data.length == 'number' && typeof data.splice == 'function') {    // 判断数据是否是数组
+                data = {
+                    total: data.length,
+                    rows: data
+                }
+            }
+            var dg = $(this);
+            var opts = dg.datagrid('options');
+            var pager = dg.datagrid('getPager');
+            pager.pagination({
+                onSelectPage: function (pageNum, pageSize) {
+                    opts.pageNumber = pageNum;
+                    opts.pageSize = pageSize;
+                    pager.pagination('refresh', {
+                        pageNumber: pageNum,
+                        pageSize: pageSize
+                    });
+                    dg.datagrid('loadData', data);
+                }
+            });
+            if (!data.originalRows) {
+                data.originalRows = (data.rows);
+            }
+            var start = (opts.pageNumber - 1) * parseInt(opts.pageSize);
+            var end = start + parseInt(opts.pageSize);
+            data.rows = (data.originalRows.slice(start, end));
+            return data;
+        }
+
+        function showSerail() {
+            var rows = $("#tabSDContractD").datagrid('getRows');
+            if (rows.length == 0) {
+                alert("当前工序无查询结果");
+                return false;
+            } else {
+                var iBscDataProcessMRecNo = rows[0].iBscDataProcessMRecNo;
+                var sqlObjSerial = {
+                    TableName: "BscDataProcessesD",
+                    Fields: "iRecNo iBscDataProcessesDRecNo,sProjectName",
+                    SelectAll: "True",
+                    filters: [{
+                        Field: "iMainRecNo",
+                        ComOprt: "=",
+                        Value: "'" + iBscDataProcessMRecNo + "'"
+                    }],
+                    Sorts: [
+                        {
+                            SortName: "iSerial",
+                            SortOrder: "asc"
+                        }
+                    ]
+                }
+                resultSerialD = SqlGetData(sqlObjSerial); 
+                $("#tabSerial").datagrid('getColumnOption', "iBscDataProcessesDRecNo").editor.options.data = resultSerialD;
+            } 
+            var TechRows = $("#tabSerial").datagrid("getRows");
+            $.each(TechRows, function (index, o) {
+                var rowIndex = $("#tabSerial").datagrid("getRowIndex", o); 
+                
+                var sqlObjValue = {
+                    TableName: "BscDataProcessesDD",
+                    Fields: "sValue",
+                    SelectAll: "True",
+                    Filters: [
+                        {
+                            Field: "iMainRecNo",
+                            ComOprt: "=",
+                            Value: "'" + o.iBscDataProcessesDRecNo + "'"
+                        }
+                    ],
+                    Sorts: [
+                        {
+                            SortName: "iSerial",
+                            SortOrder: "asc"
+                        }
+                    ]
+                }
+                var sValueData = SqlGetData(sqlObjValue);
+                $("#tabSerial").datagrid("beginEdit", rowIndex);
+                if (sValueData.length > 0) {
+                    var editors = $("#tabSerial").datagrid('getEditor', { index: rowIndex, field: 'sValue' });
+                    $(editors.target).combobox('loadData', sValueData);
+                }
+            });
+           /* currentTableID = tableid;
+            selectMainRecNo = iMainRecNo;
+            var result = serialData.filter(function (p) {
+                return p.iMainRecNo == iMainRecNo;
+            })
+            result.sort(function (x, y) {
+                return x.iSerial - y.iSerial;
+            })
+            $("#tabSerial").datagrid("loadData", result);
+            for (var i = 0; i < result.length; i++) {
+               *$("#tabSerial").datagrid("beginEdit", i);
+            }*/
+            $("#divSerial").dialog("open");
+        }
+
+        
+    </script>
+    <style type="text/css">
+        .button {
+            display: inline-block;
+            outline: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            /*font: 14px/100% 'Microsoft yahei' ,Arial, Helvetica, sans-serif;*/
+            font-size: 14px;
+            padding: .5em 2em .50em;
+            text-shadow: 0 1px 1px rgba(0,0,0,.3);
+            -webkit-border-radius: .5em;
+            -moz-border-radius: .5em;
+            border-radius: .5em;
+            -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            -moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            font-weight: bold;
+        }
+
+            .button:hover {
+                text-decoration: none;
+            }
+
+            .button:active {
+                position: relative;
+                top: 1px;
+            }
+
+        /* orange */
+        .orange {
+            /*color: #fef4e9;*/
+            color: #ffffff;
+            border: solid 1px #da7c0c;
+            background: #f78d1d;
+            background: -webkit-gradient(linear, left top, left bottom, from(#faa51a), to(#f47a20));
+            background: -moz-linear-gradient(top, #faa51a, #f47a20);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#faa51a', endColorstr='#f47a20');
+        }
+
+            .orange:hover {
+                background: #f47c20;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f88e11), to(#f06015));
+                background: -moz-linear-gradient(top, #f88e11, #f06015);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f88e11', endColorstr='#f06015');
+            }
+
+            .orange:active {
+                /*color: #fcd3a5;*/
+                color: #ffffff;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f47a20), to(#faa51a));
+                background: -moz-linear-gradient(top, #f47a20, #faa51a);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f47a20', endColorstr='#faa51a');
+            }
+
+        .button:active {
+            /*text-decoration: none;*/
+            color: red;
+        }
+    </style>
+</head>
+<body class="easyui-layout" >
+    <div id="divMenu" style="display:none;" data-options="region:'north' ,border:false">
+        <table style="height:55px;">
+            <tr>
+                <td>
+                    工序：
+                </td>
+                <td>
+                    <input id="txbMenuSerial" class="easyui-combobox" data-options="valueField:'sProcessesName',textField:'sProcessesName',required: true" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    客户订单号：
+                </td>
+                <td>
+                    <input id="txbMenuContractNo" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    产品编号：
+                </td>
+                <td>
+                    <input id="txbMenuCode" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    色号：
+                </td>
+                <td>
+                    <input id="txbMenuColorID" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    <input type="checkbox" id="ckbFinish" />
+                    <label for="ckbFinish">包含已完成</label>
+                </td>
+                <td style="vertical-align:middle;">
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-ok'" href="#" onclick="doFinish()">标记完成</a>
+                </td>
+
+                <td style="width:30px;"></td>
+
+                <td style="vertical-align:middle;">
+                    <a class="button orange" data-options="iconCls:'icon-search'" href="#" onclick="loadSDContractD()">查询</a>
+                </td>
+
+                <td style="width:5px;"></td>
+
+                <td style="vertical-align:middle;">
+                    <a class="button orange" href="#" onclick="batchBuild()">批量生成</a>
+                </td>
+                <td></td>
+                <td style="vertical-align:middle;">
+                    <a class="button orange" href="#" onclick="doFill()">填充</a>
+                </td>
+                <td style="vertical-align:middle;">
+                    <a class="button orange" href="#" onclick="showSerail()">加工要求</a>
+                </td> 
+            </tr>
+        </table>
+    </div>
+    <div data-options="region:'center'">
+        <table id="tabSDContractD"></table>
+    </div>
+    <div id="divSerial" class="easyui-dialog" data-options="title:'加工要求',width:260,height:400,
+        closed:true,modal:true,minimizable:false,collapsible:false,closable:true,onClose:confirmSerial,
+        buttons:[{text:'确定',handler:function(){$('#divSerial').dialog('close')}},{text:'取消',handler:function(){$('#divSerial').dialog('close')}}]">
+        <table id="tabSerial"></table>
+    </div>
+    <div id="divSerialMenu">
+        <table>
+            <tr>
+                <td>
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-add'" onclick="addSerial()">增加</a>
+                </td>
+                <td>
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-remove'" onclick="deleteSerial()">删除</a>
+                </td> 
+            </tr>
+        </table>
+    </div>
+    <div id="divPrint" style="display:none;">
+
+    </div>
+    
+</body>
+</html>

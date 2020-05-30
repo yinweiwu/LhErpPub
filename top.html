@@ -1,0 +1,124 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head runat="server">
+    <title></title>
+    <script type="text/javascript">
+        PK='iRecNo';
+        tablename='';
+        childTablename='';
+        $('#panel').layout('remove','west');
+        var tr0=$('<tr></tr>');
+        $('#tabConditions').append(tr0);
+        tr0.append("<td>日期从</td>");
+        tr0.append("<td class='tdInput'><input isMulti='false' plugin='datebox' id='condition_0' name='sInputDate`1' fname='sInputDate`1' FieldID='sInputDate'  ComOprt='>=' value='' class='easyui-datebox' data-options='required:false,height:20' notNull=false style='width:120px;'></input></td>");
+        tr0.append("<td>至</td>");
+        tr0.append("<td class='tdInput'><input isMulti='false' plugin='datebox' id='condition_1' name='sInputDate`2' fname='sInputDate`2' FieldID='sInputDate'  ComOprt='<=' value='' class='easyui-datebox' data-options='required:false,height:20' notNull=false style='width:120px;'></input></td>");
+        tr0.append("<td>工序</td>");
+        tr0.append("<td class='tdInput'><input isMulti='false' plugin='textbox' id='condition_2' name='iType`3' fname='iType`3' FieldID='iType' lookupOptions='[{lookupName:&quot;bscDataListD3&quot;,fixFilters:&quot;sClassID=&apos;workShopType&apos; and sCode<>&apos;0&apos;&quot;,isMulti:false,editable:true,fields:&quot;*&quot;,searchFields:&quot;*&quot;,targetID:&quot;condition_2&quot;}]' ComOprt='=' value='' style='width:120px;' class='easyui-textbox' data-options='required:false,height:20' notNull=false ></input></td>");
+        hasGroupFields=true;
+        var trGroup=$('<tr></tr>');
+        var tdGroup=$('<td colspan=8></td>');
+        var borderGroup=$("<fieldset padding-left:5px;padding-top:5px;padding-bottom:5px;'><legend style='font-weight:bold'><img src='/Base/JS/easyui/themes/icons/group.png' />分组字段</legend></fieldset>");
+        var tableGroup=$('<table></table>');
+        $(trGroup).append(tdGroup);
+        $(tdGroup).append(borderGroup);
+        $(borderGroup).append(tableGroup);
+        var trGroup0=$('<tr></tr>');
+        $(tableGroup).append(trGroup0);
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sMachineCode_0' fieldidg='sMachineCode'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sMachineCode_0' >机台号</label></td>");
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sInputDate_1' fieldidg='sInputDate'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sInputDate_1' >日期</label></td>");
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sWorkClass_2' fieldidg='sWorkClass'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sWorkClass_2' >班次</label></td>");
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sCode_3' fieldidg='sCode'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sCode_3' >产品编号</label></td>");
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sColorID_4' fieldidg='sColorID'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sColorID_4' >色号</label></td>");
+        trGroup0.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sFlowerTypeID_5' fieldidg='sFlowerTypeID'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sFlowerTypeID_5' >花型号</label></td>");
+        var trGroup1=$('<tr></tr>');
+        $(tableGroup).append(trGroup1);
+        trGroup1.append("<td class='tdInput' style='width:100px;'><input class='cbkGroupField' id='sVatNo_6' fieldidg='sVatNo'  type='checkbox'  onclick='FormList.groupFieldCheck(this)'/><label for='sVatNo_6' >缸号</label></td>");
+        $('#tabConditions').append(trGroup);
+        sGroupFieldsClass="";
+        conditionRowCount=3;
+        conditionCount=3;
+        rowGroupCount=System.Data.DataRow[];
+        $('#panel').layout('remove','east');
+        FormList.BtnExport=function(){
+            FormList.Export()};
+        $("#toolbar").append("<a id='btnExport' style='margin:1px;' class='easyui-linkbutton hxtoolbar' data-options='iconCls:&quot;icon-export&quot;,plain:true' onclick='FormList.BtnExport()'>导出</a>")
+        $("#toolbar").append("<a id='btnColumnSet' style='margin:1px;' class='easyui-linkbutton hxtoolbar' data-options='iconCls:&quot;icon-config&quot;,plain:true' onclick='FormList.openColumnDefined()'>列配置</a>")
+        $("#toolbar").append("<div class='btn-separator'></div>");
+        $("#toolbar").append("<a id='btnExit' style='margin:1px;' class='easyui-linkbutton hxtoolbar' data-options='iconCls:&quot;icon-undo&quot;,plain:true' style='margin:1px;' onclick='FormList.BtnExit()'>退出</a>");
+        var formTitle="机台日产量"; $.parser.parse('#toolbar');$.parser.parse('#tabConditions');isQuery=true;
+
+        $('#dg').datagrid({
+            fit:true,border:false,toolbar:'#toolbar'
+        ,remoteSort:false
+        ,loadFilter:pagerFilter
+        ,pagination:true
+        ,onDblClickRow:function(index, row){
+        }
+        ,ctrlSelect:true
+        ,onSelect:function(index, row){
+        }
+        ,pageSize:30
+        ,pageList:[30,30*2,30*5,30*10,5000],frozenColumns:[
+        ]
+        ,columns:[
+        [{field:'sMachineCode',datatype:'string',title:'机台号',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sInputDate',datatype:'string',title:'日期',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sWorkClass',datatype:'string',title:'班次',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sCode',datatype:'string',title:'产品编号',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sColorID',datatype:'string',title:'色号',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sFlowerTypeID',datatype:'string',title:'花型号',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'sVatNo',datatype:'string',title:'缸号',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'fQty',datatype:'number',title:'毛米数',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }},{field:'fRealQty',datatype:'number',title:'净米数',width:80,align:'center',hidden:false,sortable:false,resizable:true,halign:'center',formatter:function(value, row, index){ if(0==1&&row.__isFoot!=true){ return getTooltip(value); }else{ return value; } }}]
+        ]
+        ,onLoadSuccess:function(data){
+            showBigImage();
+            $('#dg').datagrid('fixRowHeight');
+            $('.easyui-tooltip').tooltip({onShow: function () {$(this).tooltip('tip').css({borderColor: '#000'});}});if(FormList.NeedSelectedKey){FormList.SelectRow(FormList.NeedSelectedKey);FormList.NeedSelectedRow=undefined;}
+            var mainFootData=FormList.GetFootData(summaryFields);
+            $('#dg').datagrid('reloadFooter',mainFootData);
+            if (MergeFields.length > 0) {$('#dg').datagrid('autoMergeCells', MergeFields);}
+            if(isAcrossSummry!=true){
+                if(1!=1){originalDataGridData=data.rows;}
+            }
+            else{
+                $('#dg').datagrid('fitColumns');
+                isAcrossSummry=false
+            }
+        }
+        ,showFooter:true
+        ,striped:true
+        ,rownumbers:true
+        ,rowStyler:function(index,row){
+            return 'height:32px;'}
+        });
+        setTimeout(function(){$('#panel').layout('resize');},500);
+        originalDataGridColumns=$('#dg').datagrid('options').columns;originalDataGridFrozenColumns=$('#dg').datagrid('options').frozenColumns;
+
+        summaryFields=[{Type:"sum",Field:"fQty",iDigit:"3"},{Type:"sum",Field:"fRealQty",iDigit:"3"}];
+    </script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <input type="button" value="显示0.009.toFixed(2)" onclick="alert(0.009.toFixed(2))" /><br />
+        <input type="button" value="显示0.123.toFixed(2)" onclick="alert(0.123.toFixed(2))" /><br />
+        <input type="button" value="显示0.125.toFixed(2)" onclick="alert(0.125.toFixed(2))" /><br />
+        <input type="button" value="显示0.126.toFixed(2)" onclick="alert(0.126.toFixed(2))" /><br />
+        <input type="button" value="显示20.445.toFixed(2)" onclick="alert(20.445.toFixed(2))" /><br />
+        <input onclick="alert(20.405.toFixed(2))" style="text-align" type="button" value="显示20.405.toFixed(2)" /> <br />
+        <input onclick="alert(20.415.toFixed(2))" type="button" value="显示20.415.toFixed(2)" /> <br />
+        <input onclick="alert(20.425.toFixed(2))" type="button" value="显示20.425.toFixed(2)" /> <br />
+        <input onclick="alert(20.435.toFixed(2))" type="button" value="显示20.435.toFixed(2)" /> <br />
+        <input onclick="alert(20.445.toFixed(2))" type="button" value="显示20.445.toFixed(2)" /> <br />
+        <input onclick="alert(20.455.toFixed(2))" type="button" value="显示20.455.toFixed(2)" /> <br />
+        <input onclick="alert(20.465.toFixed(2))" type="button" value="显示20.465.toFixed(2)" /> <br />
+        <input onclick="alert(20.475.toFixed(2))" type="button" value="显示20.475.toFixed(2)" /> <br />
+        <input onclick="alert(20.485.toFixed(2))" type="button" value="显示20.485.toFixed(2)" /> <br />
+        <input onclick="alert(20.495.toFixed(2))" type="button" value="显示20.495.toFixed(2)" /> <br />
+        <input onclick="alert(0.05.toFixed(1))" type="button" value="显示0.05.toFixed(1)" /> <br />
+        <input onclick="alert(0.15.toFixed(1))" type="button" value="显示0.15.toFixed(1)" /> <br />
+        <input onclick="alert(0.25.toFixed(1))" type="button" value="显示0.25.toFixed(1)" /> <br />
+        <input onclick="alert(0.35.toFixed(1))" type="button" value="显示0.35.toFixed(1)" /> <br />
+        <input onclick="alert(0.45.toFixed(1))" type="button" value="显示0.45.toFixed(1)" /> <br />
+        <input onclick="alert(0.55.toFixed(1))" type="button" value="显示0.55.toFixed(1)" /> <br />
+        <input onclick="alert(0.65.toFixed(1))" type="button" value="显示0.65.toFixed(1)" /> <br />
+        <input onclick="alert(0.75.toFixed(1))" type="button" value="显示0.75.toFixed(1)" /> <br />
+        <input onclick="alert(0.85.toFixed(1))" type="button" value="显示0.85.toFixed(1)" /> <br />
+        <input onclick="alert(0.95.toFixed(1))" type="button" value="显示0.95.toFixed(1)" /> <br />
+        <img src="http://120.27.236.214:9006/MobileServer/MobileImageHandler.ashx?db=HxERPClothCommNew2018_1&userid=master&pwd=master123&iformid7001&tablename=BscDataStyleM&irecno=3458&imageid=7001_1&isThum=1" />
+    </form>
+</body>
+</html>

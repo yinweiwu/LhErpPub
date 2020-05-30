@@ -1,0 +1,343 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>选择处理人</title>
+    <link href="/Base/JS/lib/ligerUI/skins/Aqua/css/ligerui-all.css" rel="stylesheet"
+        type="text/css" />
+    <script src="/Base/JS/lib/jquery/jquery-1.3.2.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/lib/ligerUI/js/ligerui.min.js" type="text/javascript"></script>
+    <link href="/Base/JS/lib/ligerUI/skins/Gray/css/all.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/lib/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/PopupWin.js?<%= Guid.NewGuid() %>" type="text/javascript"></script>
+    <style type="text/css">
+        body
+        {
+            font-family: Arial;
+            font-size: 12px;
+        }
+        .txbbottom
+        {
+            border: none;
+            border-bottom: solid 1px #d0d0d0;
+            width: 100px;
+        }
+        .txabottom
+        {
+            height: 82px;
+            border-bottom: solid 1px #d0d0d0;
+            overflow: auto;
+            width: 266px;
+            border-left-style: none;
+            border-left-color: inherit;
+            border-left-width: medium;
+            border-right-style: none;
+            border-right-color: inherit;
+            border-right-width: medium;
+            border-top-style: none;
+            border-top-color: inherit;
+            border-top-width: medium;
+        }
+        #tab tr td
+        {
+            height: 30px;
+        }
+    </style>
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            var treedata = SqlGetDataComm("select sClassID,sClassID+'-'+sClassName as sClassName,sParentID from bscDataClass where iType='07'");
+            $("#Text1").ligerComboBox({
+
+                valueField: 'sClassID',
+                textField: 'sClassName',
+                treeLeafOnly: false,
+                tree: {
+                    idFieldName: 'sClassID',
+                    textFieldName: "sClassName",
+                    parentIDFieldName: 'sParentID',
+                    data: treedata,
+                    slide: false,
+                    nodeWidth: 140,
+                    checkbox: false,
+                    btnClickToToggleOnly: true,
+                    isExpand: true
+                },
+                selectBoxWidth: 200,
+                selectBoxHeight: 150
+            });
+            var popup = new PopupWin({
+                formid: "5031", //对应的formid
+                menuid: "41",
+                type: "form", //类型，有form和import
+                width: 1000, //打开的宽度
+                heigth: 400, //高度
+                toField: //针对主表的子段
+                {
+                tcid: "Text4", //目标控件ID
+                valueid: "sCode", //目前控件要保存的字段名
+                textid: "sName", //要显示的字段名
+                btnid: "Button1"//触发的按键ID
+            }
+        });
+        var content = getQueryString("svalue");
+        if (content.length > 0) {
+            var otype = content.split(";")[0];
+            var sp = content.split(";")[1]; ;
+            var sindex;
+            var svalue;
+            if (parseInt(otype) < 3) {
+                sindex = sp.split(":")[0];
+                svalue = sp.split(":")[1];
+            }
+            else {
+                svalue = content.substr(content.indexOf(";") + 1, content.length - content.indexOf(";") - 1); ;
+            }
+            switch (otype) {
+                case "0":
+                    {
+                        document.getElementById("Radio1").checked = true;
+                        if (sindex == "0") {
+                            var g = $.ligerui.get('Text1');
+                            g.setValue(svalue);
+                        }
+                        else if (sindex == "1") {
+                            document.getElementById("Text2").value = svalue;
+                        }
+                        /*else {
+                        document.getElementById("TextArea1").value = svalue;
+                        }*/
+                    } break;
+                case "1":
+                    {
+                        document.getElementById("Radio2").checked = true;
+                        if (sindex == "0") {
+                            document.getElementById("Text3").value = svalue;
+                        }
+                        /*else {
+                        document.getElementById("TextArea2").value = svalue;
+                        }*/
+                    } break;
+                case "2":
+                    {
+                        document.getElementById("Radio3").checked = true;
+                        if (sindex == "0") {
+                            popup.setValue(svalue);
+                        }
+                        else if (sindex == "1") {
+                            document.getElementById("Text5").value = svalue;
+                        }
+                    } break;
+                case "3":
+                    {
+                        document.getElementById("Radio4").checked = true;
+                        document.getElementById("TextArea4").value = svalue;
+                    }
+            }
+        }
+    });
+
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]); return null;
+    }
+    function SqlGetDataComm(sqltext, p_async, p_ispost) {
+        var jsonquery = {
+            Commtext: sqltext.replace(/%/g, "%25")
+        }
+        var url = "../Handler/DataBuilder.ashx";
+        var parms = "ctype=text&sqlqueryobj=" + encodeURIComponent(JSON.stringify(jsonquery));
+        var async = p_async == undefined || p_async == null ? false : p_async;
+        var ispost = p_ispost == undefined || p_ispost == null ? true : p_ispost;
+        var result = callpostback(url, parms, async, ispost);
+        if (result && result.length > 0) {
+            try {
+                var jsonobj = eval("(" + result + ")");
+                return jsonobj;
+            }
+            catch (e) {
+                return [];
+            }
+        }
+        else {
+            return [];
+        }
+    }
+    function callpostback(url, parms, async, ispost) {
+        var xmlhttp;
+        if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+            xmlhttp = new XMLHttpRequest();
+        }
+        else {// code for IE6, IE5
+            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        if (async) {
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                    return xmlhttp.responseText;
+                }
+                //document.getElementById("operatresult").value = xmlhttp.responseText;
+                //$("#operatresult").value = xmlhttp.responseText;
+            }
+            xmlhttp.open("post", url, async);
+            if (ispost) {
+                xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            }
+            xmlhttp.send(parms);
+        }
+        else {
+            xmlhttp.open("post", url, async);
+            if (ispost) {
+                xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            }
+            xmlhttp.send(parms);
+            var result = xmlhttp.status;
+            if (result == 200) {
+                return xmlhttp.responseText;
+            }
+        }
+    }
+    function confirm() {
+        var returnvalue = "";
+        var radios = document.getElementsByName("type");
+        for (var i = 0; i < radios.length; i++) {
+            if (radios[i].checked == true) {
+                returnvalue += radios[i].value + ";";
+                if (radios[i].value == "0") {
+                    if (document.getElementById("Text1").value.length > 0) {
+                        returnvalue += "0:" + document.getElementById("Text1_val").value;
+                        break;
+                    }
+                    else if (document.getElementById("Text2").value.length > 0) {
+                        returnvalue += "1:" + document.getElementById("Text2").value;
+                    }
+                    /*else if (document.getElementById("TextArea1").value.length > 0) {
+                    returnvalue += "2:" + document.getElementById("TextArea1").value;
+                    }*/
+                }
+                else if (radios[i].value == "1") {
+                    if (document.getElementById("Text3").value.length > 0) {
+                        returnvalue += "0:" + document.getElementById("Text3").value;
+                        break;
+                    }
+                    /*else if (document.getElementById("TextArea2").value.length > 0) {
+                    returnvalue += "1:" + document.getElementById("TextArea2").value;
+                    }*/
+                }
+                else if (radios[i].value == "2") {
+                    if (document.getElementById("Text4").value.length > 0) {
+                        returnvalue += "0:" + document.getElementById("Text4_val").value;
+                        break;
+                    }
+                    else if (document.getElementById("Text5").value.length > 0) {
+                        returnvalue += "1:" + document.getElementById("Text5").value;
+                        break;
+                    }
+                }
+                else if (radios[i].value == "3") {
+                    returnvalue += document.getElementById("TextArea4").value;
+                    break;
+                }
+            }
+        }
+        window.returnValue = returnvalue;
+        window.close();
+    }
+    function cancel() {
+        window.close();
+    }
+    </script>
+</head>
+<body>
+    <table id="tab">
+        <tr>
+            <td>
+                <input id="Radio1" type="radio" name="type" value="0" />
+                <label for="Radio1">
+                    部门主管</label>
+            </td>
+            <td>
+                &nbsp;&nbsp; &nbsp;
+            </td>
+            <td>
+                部门：
+            </td>
+            <td>
+                <input id="Text1" type="text" />
+            </td>
+            <td>
+                表单域：
+            </td>
+            <td>
+                <input id="Text2" type="text" class="txbbottom" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input id="Radio2" type="radio" name="type" value="1" />
+                <label for="Radio2">
+                    角色</label>
+            </td>
+            <td>
+            </td>
+            <td>
+                角色名：
+            </td>
+            <td>
+                <input id="Text3" type="text" class="txbbottom" />
+            </td>
+            <td>
+                &nbsp;
+            </td>
+            <td>
+                &nbsp;
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input id="Radio3" type="radio" name="type" value="2" />
+                <label for="Radio3">
+                    人员</label>
+            </td>
+            <td>
+            </td>
+            <td>
+                人员：
+            </td>
+            <td>
+                <input id="Text4" type="text" class="txbbottom" />
+                <input id="Button1" type="button" value="..." />
+            </td>
+            <td>
+                表单域：
+            </td>
+            <td>
+                <input id="Text5" type="text" class="txbbottom" />
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input id="Radio4" type="radio" name="type" value="3" />
+                <label for="Radio4">
+                    自定义</label>
+            </td>
+            <td>
+            </td>
+            <td>
+                SQL语句：
+            </td>
+            <td colspan="3">
+                <textarea id="TextArea4" class="txabottom" style="font-family: Verdana;"></textarea>
+            </td>
+        </tr>
+    </table>
+    <div style="height: 30px">
+    </div>
+    <hr />
+    <div style="text-align: center;">
+        <input id="Button2" type="button" value="确认" onclick="confirm()" style="width: 50px;
+            height: 25px" />&nbsp; &nbsp;&nbsp;
+        <input id="Button3" type="button" value="取消" onclick="cancel()" style="width: 50px;
+            height: 25px" />
+    </div>
+</body>
+</html>

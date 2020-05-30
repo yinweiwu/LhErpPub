@@ -1,0 +1,790 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>纱线外加工</title>
+    <link href="/Base/JS/easyui_new/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui_new/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var userid = "";
+        var isTrans = 0;
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+                alert("获取当前用户失败，无法操作！");
+            }
+        });
+
+        $(function () {
+            var sqlObj = {
+                TableName: "BscDataCustomer",
+                Fields: "iRecNo,sCustShortName",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "isnull(iCustType,0)",
+                        ComOprt: "=",
+                        Value: 1
+                    }
+                ]
+            }
+            var lastIndex = -1;
+            var customerData = SqlGetData(sqlObj);
+            $("#tabYarnNeedList").datagrid(
+                {
+                    fit: true,
+                    border: false,
+                    columns: [
+                        [
+                            { field: "iRecNo", width: 40, checkbox: true },
+                            { field: "sFinish", title: "是否已完成", align: "center", width: 90 },
+                            { field: "sOrderNo", title: "生产单号", align: "center", width: 110 },
+                            { field: "sCode", title: "纱线编号", align: "center", width: 80 },
+                            { field: "sName", title: "纱线名称", align: "center", width: 80 },
+                            { field: "sElements", title: "规格型号", align: "center", width: 80 },
+                            { field: "sColorID", title: "色号", align: "center", width: 80 }, 
+                            { field: "sFabCode", title: "产品编号", align: "center", width: 80 },
+                            { field: "sFlowerCode", title: "产品花本型号", align: "center", width: 80 },
+                            { field: "fQty", title: "需求量", align: "center", width: 60 },
+                            { field: "fArrangeQty", title: "已安排量", align: "center", width: 60 },
+                            { field: "fNeedQty", title: "未安排量", align: "center", width: 60 },
+                            { field: "fCanUseStockQty", title: "可用库存", align: "center", width: 60 },
+                            {
+                                field: "fUseStockQty", title: "使用库存", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "fPurQty", title: "采购量/加工量", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "iBscDataCustomerRecNo", title: "加工商", align: "center", width: 80,
+                                editor: {
+                                    type: "combobox", options: {
+                                        width: 80, height: 35, valueField: "iRecNo", textField: "sCustShortName",
+                                        data: customerData
+                                    }
+                                },
+                                formatter: function (value, row, index) {
+                                    var v = isNaN(Number(value)) == true ? 0 : Number(value);
+                                    var sqlObj = {
+                                        TableName: "BscDataCustomer",
+                                        Fields: "iRecNo,sCustShortName",
+                                        SelectAll: "True",
+                                        Filters: [
+                                            {
+                                                Field: "iRecNo",
+                                                ComOprt: "=",
+                                                Value: v
+                                            }
+                                        ]
+                                    }
+                                    var data = SqlGetData(sqlObj);
+                                    if (data.length>0) {
+                                        return data[0].sCustShortName;
+                                    } else {
+                                        return value;
+                                    }
+                                }
+                            },
+                            {
+                                field: "fPrice", title: "单价", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            { field: "iBscDataMatRecNo", hidden: true },
+                            { field: "dDelivery", title: "交期", align: "center", width: 100, editor: { type: "datebox", options: { width: 100, height: 35 } } },
+                            {
+                                field: "sReMark", title: "备注", align: "center", width: 160,
+                                editor: { type: "textarea", options: { width: 160, height: 35 } }
+                            }
+                        ]
+                    ],
+                    onClickCell: function (rowIndex, field, value) {
+                        $(this).datagrid('endEdit', lastIndex);
+                        $(this).datagrid('beginEdit', rowIndex);
+                        var ed = $(this).datagrid('getEditor', { index: rowIndex, field: field });
+                        lastIndex = rowIndex;
+                       // $(ed.target).focus();
+                    },
+                    onAfterEdit: function (rowIndex, rowData, changes) {
+                        var rows = $(this).datagrid('getRows');
+                        if (rows.length > lastIndex && lastIndex >= 0 && (changes.fPurQty == undefined || changes.fPurQty == "") && (rowData.fPurQty == "" || rowData.fPurQty == undefined)) {
+                            var fPurQtyTmp = (isNaN(Number(rows[lastIndex].fNeedQty)) == true ? 0 : Number(rows[lastIndex].fNeedQty)) - (isNaN(Number(rows[lastIndex].fUseStockQty)) == true ? 0 : Number(rows[lastIndex].fUseStockQty));
+                            $(this).datagrid('updateRow', {
+                                index: lastIndex,
+                                row: {
+                                    fPurQty: fPurQtyTmp
+                                }
+                            });
+                        }
+                    },
+                    toolbar: "#divMenu",
+                    rownumbers: true,
+                    pagination: true,
+                    pageSize: 50,
+                    pageList: [50, 100, 200, 500],
+                    remoteSort: true,
+                    loadFilter: pagerFilter,
+                    checkOnSelect: false
+                })
+        })
+
+        function loadList(isSummury) {
+            if (isSummury) {
+                isTrans = 0;
+                var data1 = $("#txbMenuDateFrom").val();
+                var data2 = $("#txbMenuDateTo").val();
+                var OrderNo = $("#txbMenuOrderNo").val();
+                var Code = $("#txbMenuCode").val();
+                var FlowerCode = $("#txbMenuFlowerCode").val();
+                var Elements = $("#txbMenuElements").val();
+                var isFinish = Number($("#txbMenuIsFinish").prop("checked"));
+                if (data1 == "") {
+                    data1 = "1970-01-01";
+                }
+                if (data2 == "") {
+                    data2 = "2199-12-31";
+                }
+                var sqlObj = {
+                    TableName: "SDContractM a inner join vwSDContractDMatWasteD b on a.iRecNo = b.iRecNoM left join MMStockQty d on b.iBscDataMatRecNo = d.iBscDataMatRecNo",
+                    Fields: "b.sFinish,a.sOrderNo,max(b.iRecNo) as iRecNo,b.iBscDataMatRecNo,sum(isnull(b.fNeedQty,0)) as fQty,sum(isnull(b.fArrangeQty,0)) as fArrangeQty,sum(isnull(b.fNeedQty,0)-isnull(b.fArrangeQty,0)) as fNeedQty,b.sYarnCode as sCode,b.sYarnName as sName,b.sYarnElements as sElements,b.sColorID,sum(isnull(d.fQty,0)) as fCanUseStockQty",
+                    SelectAll: "True",
+                    Filters: [
+                        {
+                            Field: "a.dDate",
+                            ComOprt: ">=",
+                            Value: "'" + data1 + "'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "a.dDate",
+                            ComOprt: "<=",
+                            Value: "'" + data2 + "'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "a.sOrderNo",
+                            ComOprt: "like",
+                            Value: "'%" + OrderNo + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sYarnCode",
+                            ComOprt: "like",
+                            Value: "'%" + Code + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sFlowerCode",
+                            ComOprt: "like",
+                            Value: "'%" + FlowerCode + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sYarnElements",
+                            ComOprt: "like",
+                            Value: "'%" + Elements + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "isnull(b.iFinish,0)",
+                            ComOprt: "<=",
+                            Value: isFinish
+                        },
+                        {
+                            Field: " group by ",
+                            ComOprt: "",
+                            Value: "b.sFinish,a.sOrderNo,b.iBscDataMatRecNo,b.sYarnCode,b.sYarnName,b.sYarnElements,b.sColorID"
+                        }
+                    ],
+                    Sorts: [
+                        {
+                            SortName: "b.sFinish",
+                            SortOrder: "desc,max(b.iRecNo) desc"
+                        }
+                    ]
+                }
+                var data = SqlGetData(sqlObj);
+                $("#tabYarnNeedList").datagrid("loadData", data);
+
+                var allRows = $("#tabYarnNeedList").datagrid("getRows");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("endEdit", index);
+                })
+                
+            }
+            else {
+                isTrans = 1;
+                var data1 = $("#txbMenuDateFrom").val();
+                var data2 = $("#txbMenuDateTo").val();
+                var OrderNo = $("#txbMenuOrderNo").val();
+                var Code = $("#txbMenuCode").val();
+                var FlowerCode = $("#txbMenuFlowerCode").val();
+                var Elements = $("#txbMenuElements").val();
+                var isFinish = Number($("#txbMenuIsFinish").prop("checked"));
+                
+                if (data1 == "") {
+                    data1 = "1970-01-01";
+                }
+                if (data2 == "") {
+                    data2 = "2199-12-31";
+                }
+                var sqlObj = {
+                    TableName: "SDContractM a inner join vwSDContractDMatWasteD b on a.iRecNo = b.iRecNoM left join MMStockQty d on b.iBscDataMatRecNo = d.iBscDataMatRecNo",
+                    Fields: "b.sFinish,a.sOrderNo,b.iRecNo,b.iBscDataMatRecNo,b.fNeedQty as fQty,b.fArrangeQty,isnull(b.fNeedQty,0)-isnull(b.fArrangeQty,0) as fNeedQty,b.sYarnCode as sCode,b.sCode as sFabCode,b.sFlowerCode,b.sYarnName as sName,b.sYarnElements as sElements,b.sColorID,isnull(d.fQty,0) as fCanUseStockQty",
+                    SelectAll: "True",
+                    Filters: [
+                        {
+                            Field: "a.dDate",
+                            ComOprt: ">=",
+                            Value: "'" + data1 + "'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "a.dDate",
+                            ComOprt: "<=",
+                            Value: "'" + data2 + "'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "a.sOrderNo",
+                            ComOprt: "like",
+                            Value: "'%" + OrderNo + "%'", 
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sYarnCode",
+                            ComOprt: "like",
+                            Value: "'%" + Code + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sFlowerCode",
+                            ComOprt: "like",
+                            Value: "'%" + FlowerCode + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "b.sYarnElements",
+                            ComOprt: "like",
+                            Value: "'%" + Elements + "%'",
+                            LinkOprt: "and"
+                        },
+                        {
+                            Field: "isnull(b.iFinish,0)",
+                            ComOprt: "<=",
+                            Value: isFinish
+                        }
+                    ],
+                    Sorts: [
+                        {
+                            SortName: "b.iFinish",
+                            SortOrder: "desc,b.iRecNo desc"
+                        }
+                    ]
+                }
+                var data = SqlGetData(sqlObj);
+                $("#tabYarnNeedList").datagrid("loadData", data);
+                /*var allRows = $("#tabYarnNeedList").datagrid("getRows");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("beginEdit", index);
+                });*/
+            }
+            
+        }
+        
+        function buildProcess() {
+            if (isTrans) {
+                var allRows = $("#tabYarnNeedList").datagrid("getChecked");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("endEdit", index);
+                })
+                var checkedRows = $("#tabYarnNeedList").datagrid("getChecked");
+                var icheckedRecNo = "";
+                var icheckedBscDataCustomerRecNo = "";
+                var fNeedQty = "";
+                var fPrice = "";
+                var dNeedDate = "";
+                var sReMarks = "";
+                var isFinish = 0;
+                if (checkedRows.length > 0) {
+                    $.messager.confirm("确认生成", "您确定生成染色单吗？", function (r) {
+                        if (r) {
+                            $.each(checkedRows, function (index, o) {
+                                if (o.iBscDataCustomerRecNo == "" || o.iBscDataCustomerRecNo == 0 || o.iBscDataCustomerRecNo == undefined) {
+                                    alert("加工商不存在,請分配加工商");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                if (o.fPrice == "" || o.fPrice == 0 || o.fPrice == undefined) {
+                                    alert("单价不存在,請分配单价");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                if (o.dDelivery == "" || o.dDelivery == 0 || o.dDelivery == undefined) {
+                                    alert("交期不存在,請分配交期");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                icheckedRecNo += o.iRecNo + ",";
+                                icheckedBscDataCustomerRecNo += o.iBscDataCustomerRecNo + ",";
+                                var fNeedQtyTmp = (isNaN(Number(o.fNeedQty)) == true ? 0 : Number(o.fNeedQty)) - (isNaN(Number(o.fUseStockQty)) == true ? 0 : Number(o.fUseStockQty));
+                                if (fNeedQtyTmp<0) {
+                                    alert("使用量不能小于订单未安排量");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                var fNeedQtyTmp2 = isNaN(Number(o.fPurQty)) == true ? 0 : Number(o.fPurQty);
+                                if (fNeedQtyTmp2 < 0) {
+                                    alert("加工量不能小于零");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                fNeedQty += fNeedQtyTmp2 + ",";
+                                var fPriceTmp = isNaN(Number(o.fPrice)) == true ? 0 : Number(o.fPrice);
+                                fPrice += o.fPrice + ",";
+                                dNeedDate += o.dDelivery + ",";
+                                sReMarks += o.sReMark + ".,.,";
+                            });
+                            //界面代码要改
+                            if (isFinish == 1) {
+                                isFinish = 0;
+                                return false;
+                            }
+                            $.messager.progress({ title: "正在生成中，请稍等..." });
+                            var jsonobj = {
+                                StoreProName: "SpSDStockProcess",
+                                StoreParms: [
+                                    {
+                                        ParmName: "@iRecNo",
+                                        Value: icheckedRecNo,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@iBscDataCustomerRecNo",
+                                        Value: icheckedBscDataCustomerRecNo,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@fNeedQty",
+                                        Value: fNeedQty,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@fPrice",
+                                        Value: fPrice,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@dNeedDate",
+                                        Value: dNeedDate,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@sReMark",
+                                        Value: sReMarks,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@sUserID",
+                                        Value: userid
+                                    }
+                                ]
+                            }
+                            var result = SqlStoreProce(jsonobj);
+                            var resultArr = result.split("||||");
+                            var resultFirst = resultArr[0];
+                            var resultMessage = resultArr[1];
+                            if (resultFirst != "1") {
+                                alert(result);
+                            } else {
+                                alert("生成染色单成功");
+                                loadList();
+                                $.messager.confirm("是否打印", "是否打印？", function (r) {
+                                    if (r) {
+                                        alert("打印完成");
+                                    }
+                                })
+                            }
+                            setTimeout(function () {
+                                $.each(checkedRows, function (index, o) {
+                                    $("#tabYarnNeedList").datagrid("beginEdit", index);
+                                });
+                                $.messager.progress("close");
+                            }, 3000);
+                        }
+                    });
+
+                } else {
+                    MessageShow("请选择行", "请选择行");
+                }
+                var allRows = $("#tabYarnNeedList").datagrid("getRows");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("beginEdit", index);
+                })
+            }
+        }
+        function buildPurAsk() {
+            if (isTrans) {
+                var allRows = $("#tabYarnNeedList").datagrid("getChecked");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("endEdit", index);
+                })
+                var checkedRows = $("#tabYarnNeedList").datagrid("getChecked");
+                var icheckedRecNo = "";
+                var icheckedBscDataCustomerRecNo = "";
+                var fNeedQty = "";
+                var fPrice = "";
+                var dNeedDate = "";
+                var sReMarks = "";
+                var isFinish = 0;
+                if (checkedRows.length > 0) {
+                    $.messager.confirm("确认生成", "您确定生成物料采购单吗？", function (r) {
+                        if (r) {
+                            $.each(checkedRows, function (index, o) {
+                                if (o.iBscDataCustomerRecNo == "" || o.iBscDataCustomerRecNo == 0 || o.iBscDataCustomerRecNo == undefined) {
+                                    alert("供应商不存在,請分配供应商");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                if (o.fPrice == "" || o.fPrice == 0 || o.fPrice == undefined) {
+                                    alert("单价不存在,請分配单价");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                if (o.dDelivery == "" || o.dDelivery == 0 || o.dDelivery == undefined) {
+                                    alert("交期不存在,請分配交期");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                icheckedRecNo += o.iRecNo + ",";
+                                icheckedBscDataCustomerRecNo += o.iBscDataCustomerRecNo + ",";
+                                var fNeedQtyTmp = (isNaN(Number(o.fNeedQty)) == true ? 0 : Number(o.fNeedQty)) - (isNaN(Number(o.fUseStockQty)) == true ? 0 : Number(o.fUseStockQty));
+                                if (fNeedQtyTmp < 0) {
+                                    alert("使用量不能小于订单未安排量");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                var fNeedQtyTmp2 = isNaN(Number(o.fPurQty)) == true ? 0 : Number(o.fPurQty);
+                                if (fNeedQtyTmp2 < 0) {
+                                    alert("采购量不能小于零");
+                                    isFinish = 1;
+                                    return false;
+                                }
+                                fNeedQty += fNeedQtyTmp2 + ",";
+                                var fPriceTmp = isNaN(Number(o.fPrice)) == true ? 0 : Number(o.fPrice);
+                                fPrice += o.fPrice + ",";
+                                dNeedDate += o.dDelivery + ",";
+                                sReMarks += o.sReMark + ".,.,";
+                            });
+                            //界面代码要改
+                            if (isFinish == 1) {
+                                isFinish = 0;
+                                return false;
+                            }
+                            $.messager.progress({ title: "正在生成中，请稍等..." });
+                            var jsonobj = {
+                                StoreProName: "SpSDStockPurAsk",
+                                StoreParms: [
+                                    {
+                                        ParmName: "@iRecNo",
+                                        Value: icheckedRecNo,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@iBscDataCustomerRecNo",
+                                        Value: icheckedBscDataCustomerRecNo,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@fNeedQty",
+                                        Value: fNeedQty,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@fPrice",
+                                        Value: fPrice,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@dNeedDate",
+                                        Value: dNeedDate,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@sReMark",
+                                        Value: sReMarks,
+                                        Size: -1
+                                    },
+                                    {
+                                        ParmName: "@sUserID",
+                                        Value: userid
+                                    }
+                                ]
+                            }
+                            var result = SqlStoreProce(jsonobj);
+                            var resultArr = result.split("||||");
+                            var resultFirst = resultArr[0];
+                            var resultMessage = resultArr[1];
+                            if (resultFirst != "1") {
+                                alert(result);
+                            } else {
+                                alert("生成物料采购单成功");
+                                loadList();
+                                $.messager.confirm("是否打印", "是否打印？", function (r) {
+                                    if (r) {
+                                        alert("打印完成");
+                                    }
+                                })
+                            }
+                            setTimeout(function () {
+                                $.each(checkedRows, function (index, o) {
+                                    $("#tabYarnNeedList").datagrid("beginEdit", index);
+                                });
+                                $.messager.progress("close");
+                            }, 3000);
+                        }
+                    });
+
+                } else {
+                    MessageShow("请选择行", "请选择行");
+                }
+                var allRows = $("#tabYarnNeedList").datagrid("getRows");
+                $.each(allRows, function (index, o) {
+                    $("#tabYarnNeedList").datagrid("beginEdit", index);
+                })
+            }
+        }
+
+        function DoFinish() {
+            var allRows = $("#tabYarnNeedList").datagrid("getChecked");
+            $.each(allRows, function (index, o) {
+                $("#tabYarnNeedList").datagrid("endEdit", index);
+            })
+            var checkedRows = $("#tabYarnNeedList").datagrid("getChecked");
+            var icheckedRecNo = "";
+            if (checkedRows.length > 0) {
+                $.messager.confirm("确认完成", "您确定完成/取消完成吗？", function (r) {
+                    if (r) {
+                        $.each(checkedRows, function (index, o) {
+                            icheckedRecNo += o.iRecNo + ",";
+                        });
+                        var jsonobj = {
+                            StoreProName: "SpSDMatDWasteFinish",
+                            StoreParms: [
+                                {
+                                    ParmName: "@iRecNo",
+                                    Value: icheckedRecNo,
+                                    Size: -1
+                                }
+                            ]
+                        }
+                        var result = SqlStoreProce(jsonobj);
+                        if (result != "1") {
+                            alert(result);
+                        } else {
+                            alert("已完成");
+                            loadList();
+                        }
+                    }
+                });
+            } else {
+                MessageShow("请选择行", "请选择行");
+            }
+            var allRows = $("#tabYarnNeedList").datagrid("getRows");
+            $.each(allRows, function (index, o) {
+                $("#tabYarnNeedList").datagrid("beginEdit", index);
+            })
+        }
+
+        function MessageShow(title, message) {
+            $.messager.show({
+                timeout: 2000,
+                title: title,
+                msg: "<span style='color:red;font-weight:bold;'>" + message + "</span>",
+                showType: 'show',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+        function pagerFilter(data) {
+            if (typeof data.length == 'number' && typeof data.splice == 'function') {    // 判断数据是否是数组
+                data = {
+                    total: data.length,
+                    rows: data
+                }
+            }
+            var dg = $(this);
+            var opts = dg.datagrid('options');
+            var pager = dg.datagrid('getPager');
+            pager.pagination({
+                onSelectPage: function (pageNum, pageSize) {
+                    opts.pageNumber = pageNum;
+                    opts.pageSize = pageSize;
+                    pager.pagination('refresh', {
+                        pageNumber: pageNum,
+                        pageSize: pageSize
+                    });
+                    dg.datagrid('loadData', data);
+                }
+            });
+            if (!data.originalRows) {
+                data.originalRows = (data.rows);
+            }
+            var start = (opts.pageNumber - 1) * parseInt(opts.pageSize);
+            var end = start + parseInt(opts.pageSize);
+            data.rows = (data.originalRows.slice(start, end));
+            return data;
+        }
+    </script>
+    <style type="text/css">
+        .button {
+            display: inline-block;
+            outline: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            /*font: 14px/100% 'Microsoft yahei' ,Arial, Helvetica, sans-serif;*/
+            font-size: 14px;
+            padding: .5em 2em .50em;
+            text-shadow: 0 1px 1px rgba(0,0,0,.3);
+            -webkit-border-radius: .5em;
+            -moz-border-radius: .5em;
+            border-radius: .5em;
+            -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            -moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            font-weight: bold;
+        }
+
+            .button:hover {
+                text-decoration: none;
+            }
+
+            .button:active {
+                position: relative;
+                top: 1px;
+            }
+
+        /* orange */
+        .orange {
+            /*color: #fef4e9;*/
+            color: #ffffff;
+            border: solid 1px #da7c0c;
+            background: #f78d1d;
+            background: -webkit-gradient(linear, left top, left bottom, from(#faa51a), to(#f47a20));
+            background: -moz-linear-gradient(top, #faa51a, #f47a20);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#faa51a', endColorstr='#f47a20');
+        }
+
+            .orange:hover {
+                background: #f47c20;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f88e11), to(#f06015));
+                background: -moz-linear-gradient(top, #f88e11, #f06015);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f88e11', endColorstr='#f06015');
+            }
+
+            .orange:active {
+                /*color: #fcd3a5;*/
+                color: #ffffff;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f47a20), to(#faa51a));
+                background: -moz-linear-gradient(top, #f47a20, #faa51a);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f47a20', endColorstr='#faa51a');
+            }
+
+        .button:active {
+            /*text-decoration: none;*/
+            color: red;
+        }
+    </style>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'center',border:false">
+        <table id="tabYarnNeedList"></table>
+    </div>
+    <div id="divMenu" style="display:none;">
+        <table>
+            <tr>
+                <td>
+                    制单日期从：
+                </td>
+                <td>
+                    <input id="txbMenuDateFrom" class="easyui-datebox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    至：
+                </td>
+                <td>
+                    <input id="txbMenuDateTo" class="easyui-datebox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    生产单号：
+                </td>
+                <td>
+                    <input id="txbMenuOrderNo" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    包含已完成：
+                </td>
+                <td>
+                    <input id="txbMenuIsFinish" type="checkbox" />
+                </td>
+                <td rowspan="2" style="vertical-align:middle;">
+                    <a class="button orange" data-options="iconCls:'icon-search'" href="#" onclick="loadList()">明细查询</a>
+                </td>
+                <td rowspan="2" style="vertical-align:middle;">
+                    <a class="button orange" data-options="iconCls:'icon-search'" href="#" onclick="loadList(true)">汇总查询</a>
+                </td>
+                <td rowspan="2" style="padding-left: 10px; vertical-align: middle;">
+                    <a class="button orange" href="#" onclick="buildProcess()">生成染色单</a>
+                </td>
+                <td rowspan="2" style="padding-left: 10px; vertical-align: middle;">
+                    <a class="button orange" href="#" onclick="buildPurAsk()">生成采购申请</a>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    产品编号:
+                </td>
+                <td>
+                    <input id="txbMenuCode" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    花型号:
+                </td>
+                <td>
+                    <input id="txbMenuFlowerCode" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    纱线规格:
+                </td>
+                <td>
+                    <input id="txbMenuElements" class="easyui-textbox" style="width: 100px;" type="text" />
+                </td>
+                
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <a id="doFinish" style="margin:1px;" class="easyui-linkbutton l-btn l-btn-small l-btn-plain" data-options="iconCls:&quot;icon-default&quot;,plain:true" onclick="DoFinish()" group=""><span class="l-btn-text" style="margin-left:0px">纱线用量完成/取消完成</span></a>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

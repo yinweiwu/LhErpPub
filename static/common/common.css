@@ -1,0 +1,100 @@
+.textbox-readonly {
+    background-color: #F0F0F0;
+}
+
+.validatebox-readonly {
+    background-color: #F0F0F0;
+}
+
+.loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 4, 4, 0.2);
+    z-index: 15000;
+}
+
+    /*.loading div {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 80px;
+        height: 80px;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 15001;
+        border-radius: 10px;
+    }*/
+
+    .loading img {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 32px;
+        height: 32px;
+        margin-top: -20px;
+        margin-left: -20px;
+    }
+
+.loadingSub {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /*opacity: 0.6;*/
+    background: #F0F0F0;
+    z-index: 15000;
+}
+
+    .loadingSub img {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 32px;
+        height: 32px;
+        margin-top: -20px;
+        margin-left: -20px;
+    }
+
+.rowTopBtn {
+    text-decoration: none;
+    color: blue;
+}
+
+    .rowTopBtn:link {
+        color: blue;
+    }
+    /* 未被访问的链接 蓝色 */
+    .rowTopBtn:visited {
+        color: blue;
+    }
+    /* 已被访问过的链接 蓝色 */
+    .rowTopBtn:hover {
+        color: red;
+    }
+    /* 鼠标悬浮在上的链接 蓝色 */
+    .rowTopBtn:active {
+        color: blue;
+    }
+
+.rowBottomBtn {
+    text-decoration: none;
+    color: blue;
+}
+    .rowBottomBtn:link {
+        color: blue;
+    }
+/* 未被访问的链接 蓝色 */
+    .rowBottomBtn:visited {
+        color: blue;
+    }
+/* 已被访问过的链接 蓝色 */
+    .rowBottomBtn:hover {
+        color: red;
+    }
+/* 鼠标悬浮在上的链接 蓝色 */
+    .rowBottomBtn:active {
+        color: blue;
+    }

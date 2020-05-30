@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>lodop打印控件测试</title>
+    <script src="/Base/JS/easyui_new/jquery.min.js"></script>
+    <script src="/Base/JS/json2.js"></script>
+    <script src="/Base/JS/DataInterface.js"></script>
+    <script language="javascript" src="/Base/JS/LodopFuncs.js"></script>
+    <object id="LODOP_OB" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA" width=0 height=0>
+        <embed id="LODOP_EM" type="application/x-print-lodop" width=0 height=0></embed>
+    </object>
+    <script type="text/javascript">
+        var LODOP;
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        function buildPage() {
+            var sqlObjMain = {
+                TableName: "vwBscDataStyleM2",
+                Fields: "top 1 *",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iRecNo",
+                        ComOprt: "=",
+                        Value: "'1438'"
+                    }
+                ]
+            }
+            var dataMain = SqlGetData(sqlObjMain);
+            var sqlObjChildren = {
+                TableName: "vwbscDataStyleDWater",
+                Fields: "*",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "iMainRecNo",
+                        ComOprt: "=",
+                        Value: "'1438'"
+                    }
+                ]
+            }
+            var dataChildren = SqlGetData(sqlObjChildren);
+
+            var LODOP = getLodop();
+            LODOP.PRINT_INIT("吊牌打印");
+            //LODOP.SET_PRINT_PAGESIZE(1, 450, 850, "");
+            LODOP.SET_PRINT_STYLE("FontName", "宋体");
+            //0
+            LODOP.ADD_PRINT_TEXT(5, 0, 160, 20, "合格证");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "14");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", "2");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            //30
+            LODOP.ADD_PRINT_BARCODE(25, 0, 170, 30, "EAN13", dataMain[0].sDPReMark);
+            //
+            LODOP.ADD_PRINT_TEXT(60, 0, 170, 10, "品名：" + dataMain[0].sStyleName);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            //
+            LODOP.ADD_PRINT_TEXT(70, 0, 170, 10, "货号：" + dataMain[0].sStyleNo);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            //
+            LODOP.ADD_PRINT_TEXT(80, 0, 170, 10, "颜色：" + dataMain[0].sColorName);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            //
+            LODOP.ADD_PRINT_TEXT(90, 0, 170, 10, "规格：" + dataMain[0].sSpecReal);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            //
+            LODOP.ADD_PRINT_TEXT(100, 0, 170, 10, "质量等级：合格品");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+
+            //下面开始是水洗组成成份
+            $.each(dataChildren, function (index, o) {
+                LODOP.ADD_PRINT_TEXT(110 + (index * 10), 0, 170, 10, o.sMatName + ":" + o.sElents);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+                LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            })
+            //下面打印底部的
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10), 0, 170, 10, "产地：海宁  批次号：YDL001");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 10, 0, 170, 10, "检验员：检08");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 20, 0, 170, 10, "执行标准：" + dataMain[0].sStandard);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 30, 0, 170, 25, "安全技术规范：" + dataMain[0].sSafe);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "7");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 55, 0, 170, 10, "海宁盈德利皮革服饰有限公司设计出品");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "6");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 65, 0, 170, 20, "地址：海宁市皮革加工园区15号 电话：0573-80789518");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "5");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+
+            LODOP.ADD_PRINT_BARCODE(110 + (dataChildren.length * 10) + 85, 20, 170, 30, "128A", dataMain[0].sBarCode);
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", "2");
+            var saleprice = (dataMain[0].fSalePrice == null || dataMain[0].fSalePrice == "null" ? "" : dataMain[0].fSalePrice);
+            LODOP.ADD_PRINT_TEXT(110 + (dataChildren.length * 10) + 115 + 5, 0, 160, 20, "零售价：" + saleprice);
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", "10");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", "1");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", "2");
+        }
+        function PirntPreview() {
+            buildPage();
+            LODOP.PREVIEW();
+        }
+        function PirntSetup() {
+            buildPage();
+            LODOP.PRINT_SETUP();
+        }
+        function PirntDesign() {
+            buildPage();
+            LODOP.PRINT_DESIGN();
+        }
+        function Pirnt() {
+            LODOP.PRINT();
+        }
+    </script>
+</head>
+<body>
+    
+    <a href="#" onclick="PirntPreview()">打印预览</a><br />
+    <!--<a href="#" onclick="PirntPreviewA()">打印机选择</a>--><br />
+    <!--<a href="#" onclick="PirntSetup()">打印维护</a><br />
+    <a href="#" onclick="PirntDesign()">打印设计</a>
+    <a href="#" onclick="Pirnt()">直接打印</a>-->
+</body>
+</html>

@@ -1,0 +1,588 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>欢迎登录环鑫ERP</title>
+    <link href="/loginTheme/css/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" language="javascript" src="/loginTheme/js/jquery.js"></script>
+    <script type="text/javascript" src="/loginTheme/js/cloud.js"></script>
+    <script src="loginTheme/js/json2.js" type="text/javascript"></script>
+    <style type="text/css">
+        .dialogClose
+        {
+            text-decoration: none;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+        }
+        .dialogClose:hover
+        {
+            text-decoration: none;
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+        }
+        .dialogClose:visited
+        {
+            text-decoration: none;
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+        }
+        .button
+        {
+            width: 150px;
+            height: 40px;
+            border-radius: 20px;
+            text-align: center;
+            line-height: 40px;
+        }
+        .callout_button
+        {
+            background: #FF5B5B;
+            margin: 0 auto;
+        }
+        .callout_button:hover
+        {
+            background: red;
+        }
+        .close_button
+        {
+            background: #408aed;
+            margin: 0 auto;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .close_button:hover
+        {
+            background: 408aed;
+        }
+        .mask
+        {
+            width: 100%;
+            height: 100%;
+            background: #efefef;
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            filter: progid:DXImageTransform.Microsoft.Alpha(opacity=70);
+            opacity: 0.5;
+            z-index: 8000;
+            display: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+        }
+        .dialog
+        {
+            width: 400px;
+            background: #fff;
+            position: absolute;
+            z-index: 9000;
+            padding-bottom: 10px;
+            display: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+        }
+        .dialog_head
+        {
+            width: 100%;
+            height: 50px;
+            background: #f7f7f7;
+            text-align: center;
+            line-height: 50px;
+            color: #666666;
+            cursor: move;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .dialog_content
+        {
+            width: 100%;
+            height: 150px;
+            padding-top: 20px;
+            padding-left: 20px;
+            padding-left: 20px;
+        }
+    </style>
+    <script type="text/javascript" language="javascript">
+        //平台、设备和操作系统
+        var system = {
+            win: false,
+            mac: false,
+            xll: false
+        };
+        //检测平台
+        var p = navigator.platform;
+        //alert(p);
+        system.win = p.indexOf("Win") == 0;
+        system.mac = p.indexOf("Mac") == 0;
+        system.x11 = (p == "X11") || (p.indexOf("Linux") == 0);
+        //跳转语句
+        if (system.win || system.mac || system.xll) {//转向后台登陆页面
+
+        }
+        else {
+            if (getQueryString("from") != "mobile") {
+                window.location.href = "loginMobile.htm?r=" + Math.random();
+            }
+        }
+
+        $(function () {
+            $('.loginbox').css({ 'position': 'absolute', 'left': ($(window).width() - 692) / 2 });
+            $(window).resize(function () {
+                $('.loginbox').css({ 'position': 'absolute', 'left': ($(window).width() - 692) / 2 });
+            })
+
+            document.getElementById("TxtPassword").focus();
+            if (document.addEventListener) {
+                //如果是Firefox  
+                document.addEventListener("keypress", enterEvent, true);
+            } else {
+                //如果是IE
+                document.attachEvent("onkeypress", enterEvent);
+            }
+            function enterEvent(evt) {
+                if (evt.keyCode == 13) {
+                    login();
+                }
+            }
+            var url = "/ashx/LoginHandler.ashx?otype=getuserid";
+            var parms = "";
+            var async = false;
+            var ispost = false;
+            var result = callpostback(url, parms, async, ispost);
+            if (result != "") {
+                var resultObj = JSON2.parse(result);
+                document.getElementById("TxtUserName").value = resultObj.userid;
+                document.getElementById("TxtPassword").value = resultObj.pwd;
+            }
+            else {
+                document.getElementById("TxtUserName").focus();
+            }
+
+            url = "ashx/LoginHandler.ashx?otype=verify";
+            var result1 = callpostback(url, parms, async, ispost);
+            if (parseInt(result1) <= 3 && parseInt(result1) >= 0) {
+                var nowDate = new Date();
+                var expireDate = new Date(nowDate.setDate(nowDate.getDate() + parseInt(result1)));
+                alert("系统有效至【" + formatDate(expireDate) + "】,请尽快与供应商联系！");
+            }
+            if (parseInt(result1) < 0) {
+                if (parseInt(result1) == -1) {
+                    alert("系统已到期，请与供应商联系！");
+                }
+                else {
+                    alert("连接数据库失败");
+                }
+            }
+
+            //短信弹框            
+            //$(document).ready(function () {           
+
+            var $dialog = $("#dialog");
+            var $mask = $("#mask");
+
+            //点击弹出对话框
+            $("#callout").click(function () {
+                $dialog.css("display", "block");
+                $mask.css("display", "block");
+                autoCenter($dialog);
+            });
+
+            //禁止选中对话框内容
+            if (document.attachEvent) {//ie的事件监听，拖拽div时禁止选中内容，firefox与chrome已在css中设置过-moz-user-select: none; -webkit-user-select: none;
+                g('dialog').attachEvent('onselectstart', function () {
+                    return false;
+                });
+            }
+            //声明需要用到的变量
+            var mx = 0, my = 0;      //鼠标x、y轴坐标（相对于left，top）
+            var dx = 0, dy = 0;      //对话框坐标（同上）
+            var isDraging = false;      //不可拖动
+
+            //鼠标按下
+            $("#move_part").mousedown(function (e) {
+                e = e || window.event;
+                mx = e.pageX;     //点击时鼠标X坐标
+                my = e.pageY;     //点击时鼠标Y坐标
+                dx = $dialog.offset().left;
+                dy = $dialog.offset().top;
+                isDraging = true;      //标记对话框可拖动                
+            });
+
+            //鼠标移动更新窗口位置
+            $(document).mousemove(function (e) {
+                var e = e || window.event;
+                var x = e.pageX;      //移动时鼠标X坐标
+                var y = e.pageY;      //移动时鼠标Y坐标
+                if (isDraging) {        //判断对话框能否拖动
+                    var moveX = dx + x - mx;      //移动后对话框新的left值
+                    var moveY = dy + y - my;      //移动后对话框新的top值
+                    //设置拖动范围
+                    var pageW = $(window).width();
+                    var pageH = $(window).height();
+                    var dialogW = $dialog.width();
+                    var dialogH = $dialog.height();
+                    var maxX = pageW - dialogW;       //X轴可拖动最大值
+                    var maxY = pageH - dialogH;       //Y轴可拖动最大值
+                    moveX = Math.min(Math.max(0, moveX), maxX);     //X轴可拖动范围
+                    moveY = Math.min(Math.max(0, moveY), maxY);     //Y轴可拖动范围
+                    //重新设置对话框的left、top
+                    $dialog.css({ "left": moveX + 'px', "top": moveY + 'px' });
+                };
+            });
+
+            //鼠标离开
+            $("#move_part").mouseup(function () {
+                isDraging = false;
+            });
+
+            //点击关闭对话框
+            $("#btnClose").click(function () {
+                $dialog.css("display", "none");
+                $mask.css("display", "none");
+            });
+
+            //窗口大小改变时，对话框始终居中
+            window.onresize = function () {
+                autoCenter($dialog);
+            };
+            //});
+
+            //在卡号的文本框内填充提醒文字  
+            var str = "短信验证码";
+            //$("input[name='kh']").attr('style', 'color:gray;');
+            $("input[name='kh']").css('color', 'gray');
+            $("input[name='kh']").val(str);
+            $("input[name='kh']").focus(function () {
+                var v = this.value;
+                if (v == str) {
+                    //$("input[name='kh']").attr('style', 'color:;');
+                    $("input[name='kh']").css('color', '');
+                    $(this).val("").attr('name', 'kh');
+                }
+            }).blur(function () {
+                var v = this.value;
+                if (v == "") {
+                    //$("input[name='kh']").attr('style', 'color:gray;');
+                    $("input[name='kh']").css('color', 'gray');
+                    $(this).val(str).attr('name', 'kh');
+                }
+            });
+        });
+
+        function formatDate(nowdate) {
+            var year = nowdate.getFullYear();
+            var month = nowdate.getMonth();
+            var date = nowdate.getDate();
+            var monthstr = (month + 1).toString();
+            var datestr = date.toString();
+            if (month < 9) {
+                monthstr = '0' + (month + 1).toString();
+            }
+            if (date < 10) {
+                datestr = '0' + date.toString();
+            }
+            return year.toString() + "-" + monthstr + "-" + datestr;
+        }
+
+        function g(id) {
+            return document.getElementById(id)
+        };
+
+        //自动居中对话框
+        function autoCenter(el) {
+            var $dialog = $("#dialog");
+            var $mask = $("#mask");
+            var bodyW = $(window).width();
+            var bodyH = $(window).height();
+            var elW = el.width();
+            var elH = el.height();
+            $dialog.css({ "left": (bodyW - elW) / 2 + 'px', "top": (bodyH - elH) / 2 + 'px' });
+        };
+
+        function getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+
+        function login() {
+            var user = document.getElementById("TxtUserName").value;
+            var pwd = document.getElementById("TxtPassword").value;
+            var isRemeber = document.getElementById("ckbRemember").checked == true ? 1 : 0;
+            if (user == "") {
+                alert("请输入用户名");
+                return;
+            }
+            var url = "/ashx/LoginHandler.ashx";
+            var parms = "userid=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pwd) + "&remember=" + isRemeber;
+            var async = false;
+            var ispost = true;
+            var result = callpostback(url, parms, async, ispost);
+            if (result.indexOf("warn") > -1 || result.indexOf("error") > -1) {
+                alert(result.substr(result.indexOf(":") + 1, result.length - result.indexOf(":") - 1));
+            }
+            else {
+                var returnurl = decodeURIComponent(getQueryString("ReturnUrl"));
+                if (result != "1") {
+                    var $dialog = $("#dialog");
+                    var $mask = $("#mask");
+                    $dialog.css('display', 'block');
+                    $mask.css('display', 'block');
+                    autoCenter($dialog);
+                    var mobileListArr = result.split(",");
+                    for (var z = 0; z < mobileListArr.length; z++) {
+                        if (z == 0) {
+                            $("#mobileList").append("<option value='" + mobileListArr[z] + "' selected='selected' style='vertical-align: middle;'>" + mobileListArr[z] + "</option>");
+                        }
+                        else {
+                            $("#mobileList").append("<option value='" + mobileListArr[z] + "' style='vertical-align: middle;'>" + mobileListArr[z] + "</option>");
+                        }
+                    }
+                }
+                else {
+                    if (returnurl != "null" && returnurl != null && returnurl != "/") {
+                        window.location.href = returnurl + "?random=" + Math.random();
+                    }
+                    else {
+                        window.location.href = "Default2.htm?random=" + Math.random();
+                    }
+                }
+
+            }
+        }
+        function checkLogin() {
+            var validateCode = $("#txbValiCode").val();
+            if (validateCode == "") {
+                alert("请输入验证码");
+                return;
+            }
+            var user = document.getElementById("TxtUserName").value;
+            var pwd = document.getElementById("TxtPassword").value;
+            var isRemeber = document.getElementById("ckbRemember").checked == true ? 1 : 0;
+            var isBrowserRemeber = document.getElementById("ckbBrowserRemember").checked == true ? 1 : 0;
+            var mobile = $("#mobileList").val();
+            var validateCode = $("#txbValiCode").val();
+            $.ajax({
+                url: "/ashx/LoginHandler.ashx",
+                type: "post",
+                async: false,
+                cache: false,
+                data: { otype: "validateMessageLogin", mobile: mobile, userid: user, password: pwd, remember: isRemeber, validateCode: validateCode, rememberBrowser: isBrowserRemeber },
+                success: function (data) {
+                    if (data != "1") {
+                        alert(data);
+                    }
+                    else {
+                        var returnurl = decodeURIComponent(getQueryString("ReturnUrl"));
+                        if (returnurl != "null" && returnurl != null && returnurl != "/") {
+                            window.location.href = returnurl + "?random=" + Math.random();
+                        }
+                        else {
+                            window.location.href = "Default2.htm?random=" + Math.random();
+                        }
+                    }
+                },
+                error: function (data) {
+                    alert("发生错误：" + data.responseText);
+                }
+            });
+        }
+        var timer = null;
+        function getMessageCode() {
+            var mobile = $("#mobileList").val();
+            var user = document.getElementById("TxtUserName").value;
+            $.ajax({
+                url: "/ashx/LoginHandler.ashx",
+                type: "post",
+                async: false,
+                cache: false,
+                data: { otype: "sendShortMessage", mobile: mobile, userid: user },
+                success: function (data) {
+                    if (data != "1") {
+                        alert(data);
+                    }
+                    else {
+                        $("#txbValiCode").focus();
+                        var remainSec = 120;
+                        $("#btnGetCode").attr("disabled", true);
+                        $("#btnGetCode").val("120秒重新获取");
+                        timer = setInterval(function () {
+                            if (remainSec == 0) {
+                                clearInterval(timer);
+                                $("#btnGetCode").attr("disabled", false);
+                                $("#btnGetCode").val("获取验证码");
+                            }
+                            else {
+                                remainSec--;
+                                $("#btnGetCode").val(remainSec + "秒后重新获取");
+                            }
+                        }, 1000);
+                    }
+                },
+                error: function (data) {
+                    alert("发生错误：" + data.responseText);
+                }
+            });
+        }
+
+        function callpostback(url, parms, async, ispost) {
+            var xmlhttp;
+            if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp = new XMLHttpRequest();
+            }
+            else {// code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            if (async) {
+                xmlhttp.onreadystatechange = function () {
+                    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                        return xmlhttp.responseText;
+                    }
+                    //document.getElementById("operatresult").value = xmlhttp.responseText;
+                    //$("#operatresult").value = xmlhttp.responseText;
+                }
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+            }
+            else {
+                xmlhttp.open("post", url, async);
+                if (ispost) {
+                    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                }
+                xmlhttp.send(parms);
+                var result = xmlhttp.status;
+                if (result == 200) {
+                    return xmlhttp.responseText;
+                }
+            }
+        }
+        function myBrowser() {
+            var userAgent = navigator.userAgent; //取得浏览器的userAgent字符串
+            var isOpera = userAgent.indexOf("Opera") > -1;
+            if (isOpera) {
+                return "Opera"
+            }; //判断是否Opera浏览器
+            if (userAgent.indexOf("Firefox") > -1) {
+                return "FF";
+            } //判断是否Firefox浏览器
+            if (userAgent.indexOf("Chrome") > -1) {
+                return "Chrome";
+            }
+            if (userAgent.indexOf("Safari") > -1) {
+                return "Safari";
+            } //判断是否Safari浏览器
+            if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+                return "IE";
+            }; //判断是否IE浏览器
+        }
+    </script>
+</head>
+<body style="background-color: #1c77ac; background-image: url(images/light.png);
+    background-repeat: no-repeat; background-position: center top; overflow: hidden;">
+    <div id="mainBody">
+        <div id="cloud1" class="cloud">
+        </div>
+        <div id="cloud2" class="cloud">
+        </div>
+    </div>
+    <div class="logintop">
+        <span>欢迎登录环鑫ERP</span>
+        <ul>
+            <li><a href="http://www.zshsoft.cn/" target="_blank">帮助</a></li>
+            <li><a href="http://www.zshsoft.cn/" target="_blank">关于</a></li>
+        </ul>
+    </div>
+    <div class="loginbody">
+        <span class="systemlogo"></span>
+        <div class="loginbox">
+            <ul>
+                <li>
+                    <input id="TxtUserName" name="" type="text" class="loginuser" value="" /></li>
+                <li>
+                    <input id="TxtPassword" name="" type="password" class="loginpwd" /></li>
+                <li>
+                    <input name="" type="button" class="loginbtn" value="登录" onclick="login()" />
+                    <label>
+                        <input id="ckbRemember" name="" type="checkbox" value="" checked="checked" />记住密码</label><!--<label><a href="#">忘记密码？</a></label>--></li>
+            </ul>
+        </div>
+    </div>
+    <div class="loginbm">
+        <span class="login-buttom-txt">Copyright &copy;2008-2015 <a target="_blank" style="color: #ABCAD3;
+            text-decoration: underline;" href="http://www.zshsoft.cn">www.zshsoft.cn</a>
+        </span>
+        <!--版权所有 2013 <a href="http://www.uimaker.com">uimaker.com</a> 仅供学习交流，勿用于任何商业用途-->
+    </div>
+    <div id="mask" class="mask">
+    </div>
+    <div class="dialog" id="dialog">
+        <div class="dialog_head" id="move_part">
+            验证身份</div>
+        <div class="dialog_content">
+            <div style="font-size: 16px; color: #666666; margin-bottom: 10px;">
+                请验证身份后完成登录</div>
+            <div style="margin-bottom: 15px;">
+                <table>
+                    <tr>
+                        <td>
+                            <select id="mobileList" style="line-height: 35px; padding: 5px 0; vertical-align: middle;
+                                font-size: 16px; border-color: #c5c5c5; border-width: 1px; border-style: solid;
+                                width: 250px; height: 35px;">
+                            </select>
+                        </td>
+                        <td style="padding-left: 5px;">
+                            <input type="button" id="btnGetCode" style="font-size: 16px; height: 35px; width: 100px;"
+                                value="获取验证码" onclick="getMessageCode()" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <input type="text" name="kh" style="line-height: 34px; font-size: 16px; height: 35px;
+                    width: 350px; border: solid 1px #c5c5c5; padding-left: 3px; vertical-align: middle;"
+                    value="" id="txbValiCode" />
+            </div>
+            <div>
+                <table style="margin-bottom:15px;">
+                    <tr>
+                        <td>
+                            <input id="ckbBrowserRemember" type="checkbox" />
+                        </td>
+                        <td>
+                            <label for="ckbBrowserRemember">
+                                记录此浏览器</label>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top:15px;">
+            <table cellpadding="3px" cellspacing="3px;" style="margin: auto; border-collapse: separate;">
+                <tr>
+                    <td style="text-align: center; padding-right: 5px;">
+                        <div class="button close_button" id="Div1">
+                            <a href="#" class="dialogClose" id="btnClose">关闭</a>
+                        </div>
+                    </td>
+                    <td style="text-align: center; padding-left: 5px;">
+                        <div class="button close_button" id="close">
+                            <a href="#" class="dialogClose" onclick="checkLogin()">验证</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

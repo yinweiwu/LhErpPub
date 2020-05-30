@@ -1,0 +1,1078 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>角色权限分配</title>
+    <link href="/Base/JS/easyui/themes/default/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui/jquery.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/datagrid-groupview.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js?<%= Guid.NewGuid() %>>" type="text/javascript"></script>
+    <script type="text/javascript" language="javascript">
+        var curtGroupid = undefined;
+        var expandNode = undefined;
+        /*  只返回目标节点的第一级子节点，具体的用法和getChildren方法是一样的 */
+        $.extend($.fn.tree.methods, {
+            getLeafChildren: function (jq, params) {
+                var nodes = [];
+                $(params).next().children().children("div.tree-node").each(function () {
+                    nodes.push($(jq[0]).tree('getNode', this));
+                });
+                return nodes;
+            }
+        });
+        var userid = "";
+        $.ajax({
+            url: "/ashx/LoginHandler.ashx",
+            type: "post",
+            async: false,
+            cache: false,
+            data: { otype: "getcurtuserid" },
+            success: function (data) {
+                userid = data;
+            },
+            error: function (data) {
+                //alert("获取当前用户失败，无法操作！");
+            }
+        });
+        $(function () {
+            $("#form1").form({
+                url: "/Base/Handler/PublicHandler.ashx",
+                onSubmit: function (param) {
+                    param.sUserID = getCurtUserID();
+                    param.otype = "SysGroup";
+                    return true;
+                },
+                success: function (data) {
+                    if (data == "1") {
+                        //$.messager.alert("成功", "保存成功！");
+                        //$("#tree").tree("reload");
+                        loadGroupUser();
+                    }
+                    else {
+                        $.messager.alert("错误", data);
+                    }
+                    $('#roleWin').window('close');
+                }
+            }
+            );
+            //var sqlobj = {
+            //    TableName: "View_Yww_SysGroupRight",
+            //    Fields: "*",
+            //    SelectAll: "True",
+            //    Sorts: [
+            //        {
+            //            SortName: "id",
+            //            SortOrder:"asc"
+            //        },
+            //        {
+            //            SortName: "parent",
+            //            SortOrder: "asc"
+            //        }
+            //    ]
+            //};
+
+            //var urlstr = "/Base/Handler/getTreeData.ashx?idField=id&textField=text&parentField=parent&rootValue=0&attribute=parent&sqlobj=" + encodeURIComponent(JSON.stringify(sqlobj));
+            $('#tree').tree({
+                //url: "/Base/Handler/getTreeData.ashx?idField=id&textField=text&parentField=parent&rootValue=0&attribute=parent&sqlobj=" + encodeURIComponent(JSON.stringify(sqlobj)),
+                onSelect: function (node) {
+                    if (node.attributes.parent == "0") {
+                        if (curtGroupid != node.id) {
+                            $.messager.progress({
+                                title: "请等待",
+                                msg: "正在努力在载，请耐心等待。。。",
+                                interval: 1000
+                            });
+                            $('#treeRight').tree({
+                                url: "/Base/Handler/getTreeData.ashx?otype=getright&idField=id&level=0&textField=text&parentField=parent&attribute=iMenuid,iRecNo,iMenuRightid&rootValue=0&checkField=ischeck&groupid=" + node.id
+                            });
+                            curtGroupid = node.id;
+                        }
+                    }
+                    else {
+                        if (curtGroupid != node.attributes.parent) {
+                            expandNode = undefined;
+                            $.messager.progress({
+                                title: "请等待",
+                                msg: "正在努力在载，请耐心等待。。。",
+                                interval: 1000
+                            });
+                            $('#treeRight').tree({
+                                url: "/Base/Handler/getTreeData.ashx?otype=getright&idField=id&level=0&textField=text&parentField=parent&attribute=iMenuid,iRecNo,iMenuRightid&rootValue=0&checkField=ischeck&groupid=" + node.attributes.parent
+                            });
+                            curtGroupid = node.attributes.parent;
+                        }
+                    }
+                    if (node.state == "closed") {
+                        $(this).tree("expand", node.target);
+                    }
+                    else {
+                        $(this).tree("collapse", node.target);
+                    }
+                },
+                onContextMenu: function (e, node) {
+                    e.preventDefault();
+                    // 查找节点
+                    $('#tree').tree('select', node.target);
+                    // 显示快捷菜单
+                    $('#mm').menu('show', {
+                        left: e.pageX,
+                        top: e.pageY
+                    });
+                }
+            });
+            $("#txbSearch").textbox("textbox").bind("keydown", function (event) {
+                if (event.keyCode == 13) {
+                    loadGroupUser();
+                }
+            });
+            $("#txbSearch1").textbox("textbox").bind("keydown", function (event) {
+                if (event.keyCode == 13) {
+                    loadRightGroup();
+                }
+            });
+            loadGroupUser();
+
+            $('#treeRight').tree({
+                //lines: true,
+                fit: true,
+                checkbox: true,
+                url: "/Base/Handler/getTreeData.ashx?otype=getright&level=0&idField=id&textField=text&parentField=parent&attribute=iMenuid,iRecNo,iMenuRightid&rootValue=0&checkField=ischeck",
+                onSelect: function (node) {
+                    //if ($(this).tree("isLeaf", node.target)) {
+                    //    if (node.checked) {
+                    //        $(this).tree("uncheck", node.target);
+                    //    }
+                    //    else {
+                    //        $(this).tree("check", node.target);
+                    //    }
+                    //}
+                    //var text = $("#txbSearch").textbox("getValue");
+                    loadRightGroup(node);
+
+                    if (node.state == "closed") {
+                        $(this).tree("expand", node.target);
+                        expandNode = node;
+
+                    }
+                    else {
+                        $(this).tree("collapse", node.target);
+                    }
+                },
+                onCheck: function (node, checked) {
+                    if (node.state == "closed") {
+                        $(this).tree("expand", node.target);
+                    }
+                },
+                //loadFilter: myLoadFilter,
+                onLoadSuccess: function () {
+                    $.messager.progress('close');
+                    if (expandNode) {
+                        var firstChildren = $(this).tree("getLeafChildren", expandNode.target);
+                        $.each(firstChildren, function (index, o) {
+                            if (o) {
+                                $("#treeRight").tree("collapseAll", o.target);
+                            }
+                        })
+                    }
+                },
+                onLoadError: function () {
+                    $.messager.progress('close');
+                },
+                formatter: function (node) {
+                    if (!$("#treeRight").tree("isLeaf", node.target)) {
+                        return "<span style='font-weight:bolder;'>" + node.text + "</span>";
+                    }
+                    else {
+                        return "<span>" + node.text + "</span>";
+                    }
+                }
+            });
+
+            $('#treeGroupUser').tree({
+                checkbox: true,
+                onCheck: function (node, checked) {
+                    if (node.parent != "0") {
+                        var pnode = $("#treeGroupUser").tree("getParent", node.target);
+                        if (checked) {
+                            $("#treeGroupUser").tree("check", pnode.target);
+                        }
+                        else {
+                            $("#treeGroupUser").tree("uncheck", pnode.target);
+                        }
+                    }
+
+                }
+            });
+
+            $('#roleWin').window('close');
+            $('#divPerson').window('close');
+            $('#pt').datagrid({
+                fit: true,
+                border: false,
+                columns: [[
+                    { field: 'cc', checkbox: true, width: 30 },
+                    { field: 'sCode', title: '工号', width: 100, sortable: true },
+                    { field: 'sName', title: '姓名', width: 150, sortable: true }
+                ]],
+                pagination: true,
+                pageSize: 100,
+                pageList: [100, 200, 1000],
+                sortName: "sCode",
+                sortOrder: "asc",
+                view: groupview,
+                groupField: 'sClassID',
+                groupFormatter: function (value, rows) {
+                    if (rows.length > 0) {
+                        return "<span style='font-size:12px; font-weight:bolder;'>" + value + "-" + rows[0].DepartName + "</span> ";
+                    }
+                    else {
+                        return value;
+                    }
+                },
+                toolbar: "#tb"
+            });
+            $('#mm').menu({
+                onClick: function (item) {
+                    if (item.name == "add") {
+                        showPerson();
+                    }
+                    else {
+                        var node = $("#tree").tree("getSelected");
+                        if (node.attributes.parent == "0") {
+                            $.messager.alert("错误", "请选择要删除的用户而非角色！");
+                        }
+                        else {
+                            $.messager.confirm("确认", "确认删除此用户吗？", function (r) {
+                                if (r) {
+                                    var result = callpostback("/Base/Handler/PublicHandler.ashx", "otype=SysGroupUser&op=delete&groupid=" + curtGroupid + "&userids=" + node.text.substr(0, node.text.indexOf("-")), false, true);
+                                    if (result == "1") {
+                                        //$("#tree").tree("reload");
+                                        loadGroupUser();
+                                    }
+                                    else { $.messager.alert("错误", result); }
+                                }
+                            })
+                        }
+                    }
+                }
+            });
+        })
+
+        function loadGroupUser() {
+            var text = $("#txbSearch").textbox("getValue");
+            var jsonobj = {
+                StoreProName: "SpSearchGroupUser",
+                StoreParms: [{
+                    ParmName: "@sText",
+                    Value: text
+                }, {
+                    ParmName: "@iType",
+                    Value: "0"
+                }, {
+                    ParmName: "@iMenu",
+                    Value: "0"
+                }
+                ]
+            }
+            var dataGroupUser = SqlStoreProce(jsonobj, true);
+            var dataGroupUserFilter = dataGroupUser.filter(function () {
+                return 1 == 1;
+            });
+            for (var i = 0; i < dataGroupUserFilter.length; i++) {
+                dataGroupUserFilter[i].attributes = {
+                    parent: dataGroupUserFilter[i].parent
+                }
+            }
+            var dataTree = DataTableToTreeData(dataGroupUserFilter, "parent", "id");
+            $("#tree").tree("loadData", dataTree);
+        }
+
+        function DataTableToTreeData(data, pField, cFiled) {
+            var dataProcess = data.filter(function () {
+                return 1 == 1;
+            })
+
+            for (var i = 0; i < dataProcess.length;) {
+                var theValue = dataProcess[i][(cFiled)];
+                var returnObj = GetChildrenData(dataProcess, pField, cFiled, theValue, i);
+                if (returnObj.dataC.length > 0) {
+                    //这时dataProcess数组已经改变了，下标i也不一样了
+                    dataProcess[returnObj.index].children = returnObj.dataC;
+                    i = returnObj.index;
+                }
+                i++;
+            }
+            return dataProcess;
+        }
+
+        function GetChildrenData(data, pField, cFiled, value, theIndex) {
+            var returnResult = { index: theIndex, dataC: [] };//index是变化后的下标，dataC是所有子元素
+            for (var i = 0; i < data.length; i++) {
+                if (data[i][(pField)] == value) {
+                    returnResult.dataC.push(data[i]);
+                    data.splice(i, 1);
+                    if (returnResult.index > i) {//如果原下标在i之前，则不用改变；如果在之后，则要相应减1
+                        returnResult.index--;
+                    }
+                    i--;
+                }
+            }
+            if (returnResult.dataC.length > 0) {
+                for (var i = 0; i < returnResult.dataC.length; i++) {
+                    var theValue = returnResult.dataC[i][(cFiled)];
+                    var returnObj = GetChildrenData(data, pField, cFiled, theValue, i);
+                    if (returnObj.dataC.length > 0) {
+                        dataC[returnObj.index].children = returnObj.dataC;
+                        i = returnObj.index;
+                    }
+                    i++;
+                }
+            }
+            return returnResult;
+        }
+
+        function rightSave() {
+            if (curtGroupid == undefined) {
+                $.messager.alert("错误", "请选择一个角色或者用户！");
+                return;
+            }
+
+            //返回格式：角色ID|选中|不选中,选中和不选中的结构：iRecNo,MenuID,MeunRightID
+            var saveStr = curtGroupid + "|";
+            var selectStr = "";
+            var unselectStr = "";
+            var checkedNodes = $("#treeRight").tree("getChecked");
+            var checkedNodes2 = $("#treeRight").tree("getChecked", "indeterminate");
+            var uncheckedNodes = $("#treeRight").tree("getChecked", "unchecked");
+
+            for (var i = 0; i < checkedNodes.length; i++) {
+                selectStr += checkedNodes[i].attributes.iRecNo + "," + checkedNodes[i].attributes.iMenuid + "," + checkedNodes[i].attributes.iMenuRightid + ":";
+            }
+            for (var i = 0; i < checkedNodes2.length; i++) {
+                selectStr += checkedNodes2[i].attributes.iRecNo + "," + checkedNodes2[i].attributes.iMenuid + "," + checkedNodes2[i].attributes.iMenuRightid + ":";
+            }
+            if (checkedNodes.length > 0 || checkedNodes2.length > 0) {
+                selectStr = selectStr.substr(0, selectStr.length - 1);
+            }
+            //saveStr += "|";
+            for (var i = 0; i < uncheckedNodes.length; i++) {
+                unselectStr += uncheckedNodes[i].attributes.iRecNo + "," + uncheckedNodes[i].attributes.iMenuid + "," + uncheckedNodes[i].attributes.iMenuRightid + ":";
+            }
+            if (uncheckedNodes.length > 0) {
+                unselectStr = unselectStr.substr(0, unselectStr.length - 1);
+            }
+            var tab = $('#divTabs').tabs('getSelected');
+            var tabSelectIndex = $('#divTabs').tabs('getTabIndex', tab);
+            var result;
+            if (tabSelectIndex == 0) {
+                result = SqlStoreProce({
+                    StoreProName: "Yww_SetGroupRight",
+                    StoreParms: [
+                        {
+                            ParmName: "@groupid",
+                            Value: curtGroupid
+                        },
+                        {
+                            ParmName: "@selectStr",
+                            Value: selectStr,
+                            Size: -1
+                        },
+                        {
+                            ParmName: "@unselectStr",
+                            Value: unselectStr,
+                            Size: -1
+                        },
+                        {
+                            ParmName: "@userid",
+                            Value: getCurtUserID()
+                        }
+                    ]
+                });
+            } else if (tabSelectIndex == 1) {
+                result = SqlStoreProce({
+                    StoreProName: "Yww_SetSingleUserRight",
+                    StoreParms: [
+                        {
+                            ParmName: "@iBscDataPersonRecNo",
+                            Value: curtGroupid
+                        },
+                        {
+                            ParmName: "@selectStr",
+                            Value: selectStr,
+                            Size: -1
+                        },
+                        {
+                            ParmName: "@unselectStr",
+                            Value: unselectStr,
+                            Size: -1
+                        },
+                        {
+                            ParmName: "@userid",
+                            Value: getCurtUserID()
+                        }
+                    ]
+                });
+            }
+
+            if (result == "1") {
+                $.messager.alert("成功", "保存成功！");
+                $("#treeRight").tree("reload");
+            }
+            else {
+                $.messager.alert("错误", result);
+            }
+        }
+        function expandNode(node) {
+            if (node.state == "closed") {
+                $("#treeRight").tree("expand", node.target);
+            }
+            var childNodes = $("#treeRight").tree("getChildren", node.target);
+            for (var i = 0; i < childNodes.length; i++) {
+                expandNode(childNodes[i]);
+            }
+        }
+        function addRole() {
+            $("#roleWin").window("open");
+            $("#form1").form("clear");
+            document.getElementById("Text1").readOnly = false;
+        }
+        function getCurtUserID() {
+            var url = "/ashx/LoginHandler.ashx?otype=getcurtuserid";
+            var parms = "";
+            var async = false;
+            var ispost = false;
+            var result = callpostback(url, parms, async, ispost);
+            return result;
+        }
+        function saveRole() {
+            if ($("#form1").form("validate") == true) {
+                $("#form1").form("submit");
+            }
+        }
+        function closeRoleWin() {
+            $('#roleWin').window('close');
+        }
+        function editRole() {
+            if (curtGroupid == undefined) {
+                $.messager.alert("错误", "请选择一个角色！");
+                return false;
+            }
+            $('#roleWin').window('open');
+
+            var node = $("#tree").tree("find", curtGroupid);
+            $("#form1").form("load", {
+                sGroupID: node.text.substr(0, node.text.lastIndexOf("-")),
+                sGroupName: node.text.substr(node.text.lastIndexOf("-") + 1, node.text.length - node.text.lastIndexOf("-") - 1)
+            });
+            document.getElementById("Text1").readOnly = true;
+        }
+        function deleteRole() {
+            if (curtGroupid == undefined) {
+                $.messager.alert("错误", "请选择一个角色！");
+                return false;
+            }
+            $.messager.confirm("确认", "确认删除？", function (r) {
+                if (r) {
+                    var node = $("#tree").tree("find", curtGroupid);
+                    var result = callpostback("/Base/Handler/PublicHandler.ashx", "otype=SysGroup&isdelete=1&sGroupID=" + node.text.substr(0, node.text.lastIndexOf("-")) + "&sGroupName=&sUserID=", false, true);
+                    if (result == "1") {
+                        //$.messager.alert("成功", "删除成功！");
+                        //$("#tree").tree("reload");
+                        loadGroupUser();
+                        curtGroupid = undefined;
+                    }
+                    else { $.messager.alert("错误", result); }
+                }
+            });
+        }
+        function treeRightReload() {
+            $('#treeRight').tree("reload");
+            expandNode = undefined;
+        }
+        function showPerson() {
+            $("#divPerson").window("open");
+            var personSqlObj = {
+                TableName: "View_Yww_bscDataPerson",
+                Fields: "sCode,sName,sClassID,DepartName",
+                ChooseCount: "100",
+                FieldKeys: "iRecNo",
+                Filters: [
+                    {
+                        Field: "isnull(sState,'')",
+                        ComOprt: "<>",
+                        Value: "'离职'"
+                    }
+                ]
+            }
+            $("#pt").datagrid({
+                url: "/Base/Handler/getData.ashx",
+                queryParams: {
+                    sqlobj: encodeURIComponent(JSON.stringify(personSqlObj)),
+                    plugin: "datagrid"
+                }
+            })
+        }
+        function winPersonClose() {
+            $("#divPerson").window("close");
+        }
+        function personSearch() {
+            var DeptStr = $("#txtDept").val();
+            var personStr = $("#txtPerson").val();
+            if (DeptStr == "" && personStr == "") {
+                return;
+            }
+            var personSqlObj = {
+                TableName: "View_Yww_bscDataPerson",
+                Fields: "sCode,sName,sClassID,DepartName",
+                ChooseCount: "100",
+                FieldKeys: "iRecNo"
+            };
+            if (DeptStr != "") {
+                personSqlObj.Filters = [
+                {
+                    LeftParenthese: "(",
+                    Field: "sClassID",
+                    ComOprt: "like",
+                    Value: "'%" + DeptStr + "%'",
+                    LinkOprt: "or"
+                },
+                {
+                    RightParenthese: ")",
+                    Field: "DepartName",
+                    ComOprt: "like",
+                    Value: "'%" + DeptStr + "%'"
+                }
+                ];
+            }
+            if (personStr != "") {
+                if (personSqlObj.Filters && personSqlObj.Filters.length > 0) {
+                    personSqlObj.Filters[personSqlObj.Filters.length - 1].LinkOprt = "and";
+                    personSqlObj.Filters.push({
+                        LeftParenthese: "(",
+                        Field: "sCode",
+                        ComOprt: "like",
+                        Value: "'%" + personStr + "%'",
+                        LinkOprt: "or"
+                    });
+                    personSqlObj.Filters.push({
+                        RightParenthese: ")",
+                        Field: "sName",
+                        ComOprt: "like",
+                        Value: "'%" + personStr + "%'"
+                    });
+                }
+                else {
+                    personSqlObj.Filters = [
+                        {
+                            LeftParenthese: "(",
+                            Field: "sCode",
+                            ComOprt: "like",
+                            Value: "'%" + personStr + "%'",
+                            LinkOprt: "or"
+                        },
+                        {
+                            RightParenthese: ")",
+                            Field: "sName",
+                            ComOprt: "like",
+                            Value: "'%" + personStr + "%'"
+                        }
+                    ];
+                }
+            }
+
+            $("#pt").datagrid({
+                //url: "/Base/Handler/getData.ashx",
+                queryParams: {
+                    sqlobj: encodeURIComponent(JSON.stringify(personSqlObj)),
+                    plugin: "datagrid"
+                }
+            })
+        }
+        function confirmSelect() {
+            var crows = $("#pt").datagrid("getChecked");
+            if (crows.length > 0) {
+                var useridStr = "";
+                for (var i = 0; i < crows.length; i++) {
+                    useridStr += crows[i].sCode + ",";
+                }
+                if (useridStr.length > 0) {
+                    useridStr = useridStr.substr(0, useridStr.length - 1);
+                }
+                var result = callpostback("/Base/Handler/PublicHandler.ashx", "otype=SysGroupUser&op=add&groupid=" + curtGroupid + "&userids=" + useridStr, false, true);
+                if (result == "1") {
+                    //$.messager.alert("成功", "删除成功！");
+                    //$("#tree").tree("reload");
+                    loadGroupUser();
+                    $("#divPerson").window("close");
+                }
+                else { $.messager.alert("错误", result); }
+            }
+            else {
+                $.messager.alert("错误", "请至少选择一个用户！");
+            }
+        }
+        //var isRoleLoad = false;
+        function loadRightGroup() {
+            var node = $("#treeRight").tree("getSelected");
+            var text = $("#txbSearch1").textbox("getValue");
+            var jsonobj = {
+                StoreProName: "SpSearchGroupUser",
+                StoreParms: [{
+                    ParmName: "@sText",
+                    Value: text
+                }, {
+                    ParmName: "@iType",
+                    Value: "0"
+                }, {
+                    ParmName: "@iMenu",
+                    Value: "0"
+                }
+                ]
+            }
+            var dataGroupUser = SqlStoreProce(jsonobj, true);
+            var dataGroupUserFilter = dataGroupUser.filter(function () {
+                return 1 == 1;
+            });
+            for (var i = 0; i < dataGroupUserFilter.length; i++) {
+                dataGroupUserFilter[i].attributes = {
+                    parent: dataGroupUserFilter[i].parent
+                }
+            }
+            var dataTree = DataTableToTreeData(dataGroupUserFilter, "parent", "id");
+            $("#treeGroupUser").tree("loadData", dataTree);
+            var roots = $("#treeGroupUser").tree("getRoots");
+            for (var i = 0; i < roots.length; i++) {
+                $("#treeGroupUser").tree("uncheck", roots[i].target);
+            }
+
+            var jsonobj1 = {
+                StoreProName: "SpSearchGroupUser",
+                StoreParms: [{
+                    ParmName: "@sText",
+                    Value: node.id
+                }, {
+                    ParmName: "@iType",
+                    Value: "1"
+                }, {
+                    ParmName: "@iMenu",
+                    Value: ($("#treeRight").tree("isLeaf", node.target) ? "0" : "1")
+                }]
+            }
+            var result1 = SqlStoreProce(jsonobj1, true);
+            for (var i = 0; i < result1.length; i++) {
+                var node = $("#treeGroupUser").tree("find", result1[i].id);
+                $("#treeGroupUser").tree("check", node.target);
+            }
+        }
+        function save1() {
+            var tabSelectIndex = $("#divTabs").tabs("getTabIndex");
+            if (tabSelectIndex != 0) {
+                MessageShow("只能在角色权限时保存权限", "只能在角色权限时保存权限");
+                return false;
+            }
+            var selectNode = $("#treeRight").tree("getSelected");
+            var tid = selectNode.id;
+            var roots = $("#treeGroupUser").tree("getRoots");
+            var str = "";
+            for (var i = 0; i < roots.length; i++) {
+                str += roots[i].id + ":" + (roots[i].checked ? "1" : "0") + ";";
+            }
+            if (str != "")
+                str = str.substr(0, str.length - 1);
+            if ($("#treeRight").tree("isLeaf", selectNode.target)) {
+                //菜单按钮权限
+                var jsonobj = {
+                    StoreProName: "SpMenuIDGroupRightSet",
+                    StoreParms: [{
+                        ParmName: "@iMenu",
+                        Value: 0
+                    }, {
+                        ParmName: "@id",
+                        Value: tid
+                    }, {
+                        ParmName: "@str",
+                        Value: str
+                    }, {
+                        ParmName: "@sUserID",
+                        Value: userid
+                    }
+                    ]
+                }
+                var result = SqlStoreProce(jsonobj);
+                if (result != "1") {
+                    alert(result);
+                }
+                else {
+                    MessageShow("保存成功", "保存成功");
+                }
+            } else {
+                //菜单权限
+                //菜单按钮权限
+                var jsonobj = {
+                    StoreProName: "SpMenuIDGroupRightSet",
+                    StoreParms: [{
+                        ParmName: "@iMenu",
+                        Value: 1
+                    }, {
+                        ParmName: "@id",
+                        Value: tid
+                    }, {
+                        ParmName: "@str",
+                        Value: str
+                    }, {
+                        ParmName: "@sUserID",
+                        Value: userid
+                    }
+                    ]
+                }
+                var result = SqlStoreProce(jsonobj);
+                if (result != "1") {
+                    alert(result);
+                } else {
+                    MessageShow("保存成功", "保存成功");
+                }
+            }
+        }
+
+        function MessageShow(title, message) {
+            $.messager.show({
+                title: title,
+                msg: message,
+                showType: 'slide',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                },
+                timeout: 2000
+            });
+        }
+
+        var isUserLoaded = false;
+        function tabSelect(title, index) {
+            if (index == 1) {
+                if (isUserLoaded == false) {
+                    formatDeptUserData();
+                    isUserLoaded = true;
+                }
+            }
+        }
+        function formatDeptUserData() {
+            var treeData = [];
+            //加载树、加载人员
+            var sqlObjDept = {
+                TableName: "BscDataClass",
+                Fields: "iRecNo,sClassID,sClassName,sParentID,0 as sType",
+                SelectAll: "True",
+                Filters: [
+                    {
+                        Field: "sType", ComOprt: "=", Value: "'depart'"
+                    }
+                ],
+                Sorts: [
+                    { SortName: "sClassID", SortOrder: "asc" }
+                ]
+            }
+            var resultDept = SqlGetData(sqlObjDept);
+            if (resultDept.length > 0) {
+                var theChildIndexArr = [];
+                var fun = function (theOne, resultDept) {
+                    for (var j = 0; j < resultDept.length; j++) {
+                        if ($.inArray(j, theChildIndexArr) > -1) {
+                            continue;
+                        }
+                        if (theOne.id != resultDept[j].iRecNo && resultDept[j].sParentID == theOne.attributes.sClassID) {
+                            //如果这个元素已经在treeData中了，则直接将这个元素给到children中，并从treeData删除，否则重新组织
+                            var isIn = false;
+                            for (var k = 0; k < treeData.length; k++) {
+                                if (resultDept[j].iRecNo == treeData[k].id) {
+                                    isIn = true;
+                                    if (theOne.children) {
+                                        theOne.children.push(treeData[k]);
+                                    } else {
+                                        theOne.children = [treeData[k]];
+                                    }
+                                    treeData.splice(k, 1);
+                                    break;
+                                }
+                            }
+                            if (isIn == false) {
+                                var theChildOne = {
+                                    id: resultDept[j].iRecNo,
+                                    text: resultDept[j].sClassID + "-" + resultDept[j].sClassName,
+                                    attributes: resultDept[j]
+                                }
+                                if (theOne.children) {
+                                    theOne.children.push(theChildOne);
+                                } else {
+                                    theOne.children = [theChildOne];
+                                }
+                            }
+                            theChildIndexArr.push(j);
+                            fun(theChildOne, resultDept);
+                        }
+                    }
+                }
+
+                for (var i = 0; i < resultDept.length; i++) {
+                    if ($.inArray(i, theChildIndexArr) > -1) {
+                        continue;
+                    }
+                    var theOne = {
+                        id: resultDept[i].iRecNo,
+                        text: resultDept[i].sClassID + "-" + resultDept[i].sClassName,
+                        attributes: resultDept[i]
+                    };
+                    treeData.push(theOne);
+                    fun(theOne, resultDept);
+                }
+                var sqlObjUser = {
+                    TableName: "bscDataPerson",
+                    Fields: "iRecNo,sCode,sName,sClassID,1 as sType",
+                    SelectAll: "True",
+                    Sorts: [
+                        { SortName: "sClassID", SortOrder: "asc" },
+                        { SortName: "sCode", SortOrder: "asc" }
+                    ]
+                }
+                var resultUser = SqlGetData(sqlObjUser);
+                if (resultUser.length > 0) {
+                    for (var i = 0; i < resultUser.length; i++) {
+                        for (var j = 0; j < treeData.length; j++) {
+                            if (treeData[j].attributes.sClassID == resultUser[i].sClassID) {
+                                //当前用户就是这个部门下的
+                                if (treeData[j].children) {
+                                    treeData[j].children = [{
+                                        id: Number(resultUser[i].iRecNo) * -1,
+                                        text: resultUser[i].sCode + '-' + resultUser[i].sName,
+                                        attributes: resultUser[i]
+                                    }];
+                                } else {
+                                    treeData[j].children.push({
+                                        id: Number(resultUser[i].iRecNo) * -1,
+                                        text: resultUser[i].sCode + '-' + resultUser[i].sName,
+                                        attributes: resultUser[i]
+                                    });
+                                }
+                                break;
+                            } else if (resultUser[i].sClassID.indexOf(treeData[j].attributes.sClassID) > -1) {
+                                //是这个部门子部门下的
+                                var curtElement = treeData[j];
+                                while (curtElement && curtElement.children) {
+                                    var allDeprt = curtElement.children;
+                                    var isFind = false;
+                                    for (var k = 0; k < allDeprt.length; k++) {
+                                        if (allDeprt[k].attributes.sType == 1) {
+                                            continue;
+                                        }
+                                        if (resultUser[i].sClassID.indexOf(allDeprt[k].attributes.sClassID) > -1) {
+                                            isFind = true;
+                                            if (resultUser[i].sClassID == allDeprt[k].attributes.sClassID) {
+                                                if (allDeprt[k].children) {
+                                                    allDeprt[k].children.push({
+                                                        id: Number(resultUser[i].iRecNo) * -1,
+                                                        text: resultUser[i].sCode + '-' + resultUser[i].sName,
+                                                        attributes: resultUser[i]
+                                                    });
+                                                } else {
+                                                    allDeprt[k].children = [{
+                                                        id: Number(resultUser[i].iRecNo) * -1,
+                                                        text: resultUser[i].sCode + '-' + resultUser[i].sName,
+                                                        attributes: resultUser[i]
+                                                    }];
+                                                }
+                                                curtElement = null;
+                                            } else {
+                                                curtElement = allDeprt[k];
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    if (isFind == false) {
+                                        curtElement = null;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                $("#treeUser").tree("loadData", treeData);
+                if (resultDept.length > 10) {
+                    $("#treeUser").tree("collapseAll");
+                    var roots = $("#treeUser").tree("getRoots");
+                    for (var i = 0; i < roots.length; i++) {
+                        $("#treeUser").tree("expand", roots[i].target);
+                    }
+                }
+            }
+        }
+        function userSelect(node) {
+            var type = node.attributes.sType;
+            if (type == 0) {
+                if (node.state == "closed") {
+                    $(this).tree("expand", node.target);
+                }
+                else {
+                    $(this).tree("collapse", node.target);
+                }
+            } else {
+                curtGroupid = node.attributes.iRecNo;
+                $.messager.progress({
+                    title: "请等待",
+                    msg: "正在努力在载，请耐心等待。。。",
+                    interval: 1000
+                });
+                $('#treeRight').tree({
+                    url: "/Base/Handler/getTreeData.ashx?otype=getSingleRight&idField=id&level=0&textField=text&parentField=parent&attribute=iMenuid,iRecNo,iMenuRightid&rootValue=0&checkField=ischeck&iBscDataPersonRecNo=" + node.attributes.iRecNo
+                });
+            }
+        }
+    </script>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'west',split:true" style="width: 300px;">
+        <div id="divTabs" class="easyui-tabs" data-options="fit:true,border:false,onSelect:tabSelect">
+            <div title="角色用户">
+                <div class="easyui-layout" data-options="fit:true,border:false">
+                    <div data-options="region:'north',border:false" style="height:65px">
+                        <table style="width: 100%; background-color:#efefef;">
+                            <tr>
+                                <td>
+                                    <input id="txbSearch" class="easyui-textbox" data-options="prompt:'请输入角色名称或者工号、姓名'" style="width:200px;" />
+                                    <a id="btnSearch" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search'"
+                                       onclick="loadGroupUser()">查询</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <a id="btnAdd" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-add'"
+                                       onclick="addRole()">增加角色</a>
+                                    <a id="btnEdit" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-edit'"
+                                       onclick="editRole()">修改角色</a>
+                                    <a id="btnDelete" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-remove'" onclick="deleteRole()">删除角色</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div data-options="region:'center',border:false">
+                        <ul id="tree"></ul>
+                        <div id="roleWin" class="easyui-window" title="角色信息" style="width: 300px; height: 150px"
+                             data-options="iconCls:'icon-save',modal:true,collapsible:false,minimizable:false,maximizable:false,resizable:true,closed:true">
+                            <form id="form1" method="post">
+                                <table style="width: 100%; font-size: 12px;">
+                                    <tr>
+                                        <td>
+                                            角色编号
+                                        </td>
+                                        <td>
+                                            <input id="Text1" class="easyui-validatebox" name="sGroupID" style="border: none;
+                            border-bottom: solid 1px #aaaaaa;" data-options="required:true" type="text" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            角色名称
+                                        </td>
+                                        <td>
+                                            <input id="Text2" class="easyui-validatebox" name="sGroupName" style="border: none;
+                            border-bottom: solid 1px #aaaaaa;" data-options="required:true" type="text" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" align="center">
+                                            <a id="A3" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save'"
+                                               onclick="saveRole()">保存</a> <a id="A4" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-cancel'"
+                                                                              onclick="closeRoleWin()">取消</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </form>
+                        </div>
+                        <div id="divPerson" class="easyui-window" title="人员选择" style="width: 550px; height: 500px;
+            overflow-x: hidden;" data-options="iconCls:'icon-save',modal:true,collapsible:false,minimizable:false,maximizable:false,resizable:true,closed:true">
+                            <table id="pt"></table>
+                        </div>
+                        <div id="tb">
+                            <table style="font-size: 12px;">
+                                <tr>
+                                    <td>
+                                        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-ok',plain:true"
+                                           onclick="confirmSelect()">确认选择</a>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-cancel',plain:true"
+                                           onclick="winPersonClose()">取消</a>
+                                    </td>
+                                    <td>
+                                        部门：<input id="txtDept" style="width: 100px; border: none; border-bottom: solid 1px #efefef;"
+                                                  type="text" />
+                                    </td>
+                                    <td>
+                                        人员：<input id="txtPerson" style="width: 100px; border: none; border-bottom: solid 1px #efefef;"
+                                                  type="text" />
+                                    </td>
+                                    <td>
+                                        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search',plain:true"
+                                           onclick="personSearch()">搜索</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div id="mm" class="easyui-menu">
+                            <div data-options="iconCls:'icon-add',name:'add'">
+                                增加用户
+                            </div>
+                            <div data-options="iconCls:'icon-remove',name:'remove'">
+                                删除用户
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div title="单用户">
+                <ul id="treeUser" class="easyui-tree" data-options="onSelect:userSelect"></ul>
+            </div>
+        </div>
+
+    </div>
+    <div data-options="region:'center',title:'权限'">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'north',border:false">
+                <div style="height: 30px; line-height: 30px; background-color: #efefef;">
+                    <a id="A1" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-reload'"
+                       onclick="treeRightReload()">刷新</a> <a id="A2" href="#" class="easyui-linkbutton"
+                                                             data-options="iconCls:'icon-save'" onclick="rightSave()">保存权限</a>
+                </div>
+            </div>
+            <div data-options="region:'center',border:false">
+                <ul id="treeRight"></ul>
+            </div>
+        </div>
+    </div>
+    <div data-options="region:'east',border:false,title:'拥有此权限的角色'" style="width:500px;">
+        <div class="easyui-layout" data-options="fit:true,border:false">
+            <div data-options="region:'north',border:false" style="height:35px">
+                <table style="width: 100%; background-color:#efefef;">
+                    <tr>
+                        <td>
+                            <input id="txbSearch1" class="easyui-textbox" data-options="prompt:'请输入角色名称或者工号、姓名'" style="width:200px;" />
+                            <a id="btnSearch1" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search'"
+                               onclick="loadRightGroup()">查询</a>
+                            &nbsp;
+                            <a id="btnSave1" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save'"
+                               onclick="save1()">保存</a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div data-options="region:'center',border:false">
+                <ul id="treeGroupUser"></ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>环鑫ERP管理系统</title>
+    <link href="/Base/JS/easyui/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui/themes/icon.css" rel="stylesheet" type="text/css" />
+    <link href="/myCssJs/main.css" rel="stylesheet" />
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js?<%= Guid.NewGuid() %>" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/JS/fusioncharts/fusioncharts.js" type="text/javascript"></script>
+    <script src="/JS/fusioncharts/themes/fusioncharts.theme.fint.js" type="text/javascript"></script>
+    <script src="/myCssJs/main.js?r=1" type="text/javascript"></script>
+    <script type="text/javascript">
+        mxBasePath = '/Base/mxgraph/javascript/src';
+	</script>
+    <script src="Base/mxgraph/javascript/mxClient.js" type="text/javascript"></script>
+    <script src="JS/loadMxGraph.js?r=1" type="text/javascript"></script>
+</head>
+<body class="easyui-layout">
+    <div data-options="region:'north',maxHeight:45" style="height: 45px;background-color:#333;border:none;" class="main_logo">
+        <div class="main_logo_img">
+            <img src="images/zs-logo.png" alt="logo" />
+        </div>
+        <div class="main_logo_l">
+            <ul class="main_nav">
+                
+            </ul>
+        </div>
+        <div class="main_logo_r">
+            <!--<ul class="main_work">
+                <li><a href="#">我的工作</a></li>
+                <li><a href="#">我的报表</a></li>
+            </ul>-->
+            <ul class="main_exit">
+                <li><a href="#">欢迎您，<i id="userName">content</i></a></li>
+                <li><a href="#" onclick="loginout()">安全退出</a></li>
+            </ul>
+        </div>
+    </div>
+    <div data-options="region:'center'">
+        <div id="tt" class="easyui-tabs" data-options="fit:true,border:false,onSelect:tabChange,onBeforeClose:tabBeforeClose">
+            <div title="首页" data-options="iconCls:'icon-home'">
+                <div class="main_content">
+                    <div class="main_content_left">
+
+                        <div class="main_left_item">
+                            <div class="left_item_content">
+                                <h3 class="left_item_tit notice_tit">通知公告</h3>
+                                <div class="notice_content">
+                                    <img src="images/001.jpg" alt="公司图片" />
+                                    <div class="notice_item">
+                                        <ul class="notice1">
+                                            <!--<li><a href="#">content写点内容写点内容写点内容写点内容很长很长写点内容写点内容写点内容写点内容很长很长内容写点内容很长</a></li>
+                                        <li><a href="#">再加三条</a></li>-->
+                                        </ul>
+                                        <ul class="notice2"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="main_left_item has_border_bottom">
+                            <div class="left_item_content">
+                                <h3 class="left_item_tit todo_tit">待办事项</h3>
+                                <div class="left_item_div todoList_item">
+                                    <ul class="todoList">
+                                        <!--<li><a href="#">列表1内容</a></li>
+                                    <li><a href="#">列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长</a></li>
+                                    <li><a href="#">列表3内容很长列表33内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长列表2内容很长</a></li>-->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="main_left_item no_border_bottom">
+                            <div class="left_item_content">
+                                <h3 class="left_item_tit remind_tit">提醒</h3>
+                                <div class="left_item_div">
+                                    <ul class="remindList">
+                                        <!--<li><a href="#">列表1内容</a></li>
+                                    <li><a href="#">列表1内容</a></li>-->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="main_content_right">
+                        <div class="main_right_item">
+                            <div class="right_item_top" id="divFlow">
+
+                            </div>
+                            <div class="right_item_bottom">
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div title="图表" id="divChart" data-options="iconCls:'icon-chart'"></div>
+        </div>
+    </div>
+    <div id="mm" class="easyui-menu" style="width: 120px; display: none;">
+        <div id="mm-tabclose" name="6">
+            刷新</div>
+        <div id="Div1" name="1">
+            关闭</div>
+        <div id="mm-tabcloseall" name="2">
+            全部关闭</div>
+        <div id="mm-tabcloseother" name="3">
+            除此之外全部关闭</div>
+        <div class="menu-sep">
+        </div>
+        <div id="mm-tabcloseright" name="4">
+            当前页右侧全部关闭</div>
+        <div id="mm-tabcloseleft" name="5">
+            当前页左侧全部关闭</div>
+    </div>
+    <div id="divWin" style="display: none;">
+    </div>
+    <div id="divNoticeDetail" style="display: none;">
+    </div>
+</body>
+</html>

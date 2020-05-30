@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <link href="/Base/JS/easyui_new/themes/gray/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="/Base/JS/easyui_new/themes/icon.css" rel="stylesheet" type="text/css" />
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/jquery.easyui.min.js" type="text/javascript"></script>
+    <script src="/Base/JS/easyui_new/locale/easyui-lang-zh_CN.js" type="text/javascript"></script>
+    <script src="/Base/JS/json2.js" type="text/javascript"></script>
+    <script src="/Base/JS/datagridExtend.js" type="text/javascript"></script>
+    <script src="/Base/JS/DataInterface.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var textData = [
+            {
+                sOrderNo: "SC171129-001", sCode: "12342-1", sFlowerCode: "111-1", fProductWidth: 150, fProductWeight: 200, fWeavingArrQty: 100, fNotWeavingQty: 100,sWeftStatus:"未采购"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "22342-1", sFlowerCode: "121-1", fProductWidth: 150, fProductWeight: 190, fWeavingArrQty: 150, fNotWeavingQty: 200, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "32342-1", sFlowerCode: "131-1", fProductWidth: 180, fProductWeight: 210, fWeavingArrQty: 130, fNotWeavingQty: 50, sWeftStatus: "采购中"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "22342-1", sFlowerCode: "112-1", fProductWidth: 140, fProductWeight: 180, fWeavingArrQty: 140, fNotWeavingQty: 123, sWeftStatus: "部分完成"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "52342-1", sFlowerCode: "171-1", fProductWidth: 150, fProductWeight: 300, fWeavingArrQty: 120, fNotWeavingQty: 223, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "45342-1", sFlowerCode: "181-1", fProductWidth: 140, fProductWeight: 450, fWeavingArrQty: 110, fNotWeavingQty: 456, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "23342-1", sFlowerCode: "151-1", fProductWidth: 120, fProductWeight: 280, fWeavingArrQty: 0, fNotWeavingQty: 245, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "18342-1", sFlowerCode: "119-1", fProductWidth: 140, fProductWeight: 260, fWeavingArrQty: 0, fNotWeavingQty: 12, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "12342-1", sFlowerCode: "120-1", fProductWidth: 150, fProductWeight: 210, fWeavingArrQty: 0, fNotWeavingQty: 356, sWeftStatus: "齐料"
+            },
+            {
+                sOrderNo: "SC171129-001", sCode: "12342-1", sFlowerCode: "锦纶", fProductWidth: 155, fProductWeight: 250, fWeavingArrQty: 40, fNotWeavingQty: 123, sWeftStatus: "未采购"
+            }
+        ];
+        $(function () {
+            $("#tabSDContractD").datagrid(
+                {
+                    fit: true,
+                    border: false,
+                    columns: [
+                        [
+                            { field: "__ck", width: 40, checkbox: true, rowspan: 2 },
+                            { field: "sOrderNo", title: "生产单号", align: "center", width: 110, rowspan: 2 },
+                            { field: "sCode", title: "产品编号", align: "center", width: 80, rowspan: 2 },
+                            { field: "sFlowerCode", title: "花本型号", align: "center", width: 80, rowspan: 2 },
+                            { field: "fProductWidth", title: "幅宽", align: "center", width: 60, rowspan: 2 },
+                            { field: "fProductWeight", title: "克重", align: "center", width: 60, rowspan: 2 },
+                            { field: "fProduceQty", title: "生产米数", align: "center", width: 60, rowspan: 2 },
+                            { field: "fWeavingArrQty", title: "已排米数", align: "center", width: 60, rowspan: 2 },
+                            { field: "fNotWeavingQty", title: "未排米数", align: "center", width: 60, rowspan: 2 },
+                            { field: "sWeftStatus", title: "纬线状态", align: "center", width: 60, rowspan: 2 },
+                            { title: "本次排产", align: "center", colspan: 3 }
+                        ],
+                        [
+                            {
+                                field: "fLong", title: "匹长", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "iQty", title: "卷数", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "fTheProduceQty", title: "米数", align: "center", width: 80,
+                                editor: {
+                                    type: "numberbox", options: {
+                                        width: 80, height: 35
+                                    }
+                                }
+                            },
+                            {
+                                field: "fWarpingQty", title: "整经米数", align: "center", width: 60,
+                                editor: { type: "numberbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "dWeavingPlanBeginDate", title: "计划开始日期", align: "center", width: 100,
+                                editor: { type: "datebox", options: { width: 100, height: 35 } }
+                            },
+                            {
+                                field: "dWarpingEndDate", title: "计划未完成日期", align: "center", width: 60,
+                                editor: { type: "datebox", options: { width: 100, height: 35 } }
+                            },
+                            {
+                                field: "sMachineID", title: "机台", align: "center", width: 60,
+                                editor: { type: "textbox", options: { width: 60, height: 35 } }
+                            },
+                            {
+                                field: "sReMark", title: "备注", align: "center", width: 100,
+                                editor: { type: "textarea", options: { width: 100, height: 35 } }
+                            },
+                            { field: "sWeftStatus", title: "纬线状态", align: "center", width: 60 }
+                        ]
+                    ],
+                    toolbar: "#divMenu",
+                    rownumbers: true,
+                    pagination: true,
+                    pageSize: 50,
+                    pageList: [50, 100, 200, 500],
+                    remoteSort: true,
+                    loadFilter: pagerFilter
+                })
+        })
+        function loadSDContractD() {
+            $("#tabSDContractD").datagrid("loadData", textData);
+            var allRows = $("#tabSDContractD").datagrid("getRows");
+            $.each(allRows, function (index,o) {
+                $("#tabSDContractD").datagrid("beginEnd", index);
+            })
+        }
+        function batchBuild() {
+            var checkedRows = $("#tabSDContractD").datagrid("getChecked");
+            if (checkedRows.length > 0) {
+                $.each(checkedRows, function (index, o) {
+                    $("#tabSDContractD").datagrid("endEdit", index);
+                });
+                //界面代码要改
+                $.messager.progress({ title: "正在生成中，请稍等..." });
+                setTimeout(function () {
+                    $.each(checkedRows, function (index, o) {
+                        $("#tabSDContractD").datagrid("beginEdit", index);
+                    });
+                    $.messager.progress("close");
+                }, 3000);
+            } else {
+                MessageShow("请选择行", "请选择行");
+            }
+        }
+
+        function MessageShow(title, message) {
+            $.messager.show({
+                timeout: 2000,
+                title: title,
+                msg: "<span style='color:red;font-weight:bold;'>" + message + "</span>",
+                showType: 'show',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+        function pagerFilter(data) {
+            if (typeof data.length == 'number' && typeof data.splice == 'function') {    // 判断数据是否是数组
+                data = {
+                    total: data.length,
+                    rows: data
+                }
+            }
+            var dg = $(this);
+            var opts = dg.datagrid('options');
+            var pager = dg.datagrid('getPager');
+            pager.pagination({
+                onSelectPage: function (pageNum, pageSize) {
+                    opts.pageNumber = pageNum;
+                    opts.pageSize = pageSize;
+                    pager.pagination('refresh', {
+                        pageNumber: pageNum,
+                        pageSize: pageSize
+                    });
+                    dg.datagrid('loadData', data);
+                }
+            });
+            if (!data.originalRows) {
+                data.originalRows = (data.rows);
+            }
+            var start = (opts.pageNumber - 1) * parseInt(opts.pageSize);
+            var end = start + parseInt(opts.pageSize);
+            data.rows = (data.originalRows.slice(start, end));
+            return data;
+        }
+    </script>
+    <style type="text/css">
+        .button {
+            display: inline-block;
+            outline: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            /*font: 14px/100% 'Microsoft yahei' ,Arial, Helvetica, sans-serif;*/
+            font-size: 14px;
+            padding: .5em 2em .50em;
+            text-shadow: 0 1px 1px rgba(0,0,0,.3);
+            -webkit-border-radius: .5em;
+            -moz-border-radius: .5em;
+            border-radius: .5em;
+            -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            -moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+            font-weight: bold;
+        }
+
+            .button:hover {
+                text-decoration: none;
+            }
+
+            .button:active {
+                position: relative;
+                top: 1px;
+            }
+
+        /* orange */
+        .orange {
+            /*color: #fef4e9;*/
+            color: #ffffff;
+            border: solid 1px #da7c0c;
+            background: #f78d1d;
+            background: -webkit-gradient(linear, left top, left bottom, from(#faa51a), to(#f47a20));
+            background: -moz-linear-gradient(top, #faa51a, #f47a20);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#faa51a', endColorstr='#f47a20');
+        }
+
+            .orange:hover {
+                background: #f47c20;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f88e11), to(#f06015));
+                background: -moz-linear-gradient(top, #f88e11, #f06015);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f88e11', endColorstr='#f06015');
+            }
+
+            .orange:active {
+                /*color: #fcd3a5;*/
+                color: #ffffff;
+                background: -webkit-gradient(linear, left top, left bottom, from(#f47a20), to(#faa51a));
+                background: -moz-linear-gradient(top, #f47a20, #faa51a);
+                filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f47a20', endColorstr='#faa51a');
+            }
+
+        .button:active {
+            /*text-decoration: none;*/
+            color: red;
+        }
+    </style>
+</head>
+<body class="easyui-layout" data-options="border:false">
+    <div data-options="region:'center',border:false">
+        <table id="tabSDContractD"></table>
+    </div>
+    <div id="divMenu" style="display:none;">
+        <table>
+            <tr>
+                <td>
+                    生产单号：
+                </td>
+                <td>
+                    <input id="txbMenuDateFrom" class="easyui-datebox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    产品编号：
+                </td>
+                <td>
+                    <input id="txbMenuDateTo" class="easyui-datebox" style="width: 100px;" type="text" />
+                </td>
+                <td>
+                    花型号：
+                </td>
+                <td style="vertical-align:middle;">
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-search'" href="#" onclick="loadSDContractD()">查询</a>
+                </td>
+                <td style="vertical-align:middle;">
+                    <a class="easyui-linkbutton" data-options="iconCls:'icon-ok'" href="#" onclick="batchBuild()">批量生成</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
