@@ -27,6 +27,15 @@
                 if (result1.length > 0) {
                     Page.setFieldValue("fSendTotal", result1[0].fOutTotal);
                 }
+                Page.setFieldValue("sProductMass", Page.pageData.sProductMass);
+                if (Page.pageData.sProductMass == "个人") {
+                    $("#inputRadioP")[0].checked = true;
+                    $("#tdID").html("身份证号");
+                }
+                if (Page.pageData.sProductMass == "公司") {
+                    $("#inputRadioC")[0].checked = true;
+                    $("#tdID").html("公司名称");
+                }
             }
             else {
                 $("#trPay").hide();
@@ -47,7 +56,7 @@
                 );
             $("#SDOrderD").datagrid(options);   //新增一个纱线用量
 
-
+             
 
             if (Page.usetype == "add") {
                 Page.setFieldValue("sFinishCode", "   ,乙方应于甲方交付产品后   天内付清该批货物货款，且双方交易过程中的累积欠款金额不得超过   元。");
@@ -131,6 +140,8 @@
                             Page.setFieldEnabled("sRollWeight");
                             Page.setFieldEnabled("iUnitID");
                             Page.setFieldEnabled("iOrderType");
+                            Page.setFieldEnabled("dOrderDate");
+                            Page.setFieldEnabled("dProduceDate");
                         }
                         if (sModifyType == "其他费用变更") {
                             Page.mainDisabled();
@@ -142,8 +153,7 @@
 
         Page.beforeLoad = function () {
             if (Page.usetype == "modify" || Page.usetype == "view") {
-                var sqlobj2 = {
-                    TableName: "vwSDOrderM_GMJ",
+                var sqlobj2 = { TableName: "vwSDOrderM_GMJ",
                     Fields: "sName,sBscDataFabCode,fProductWidth,fProductWeight",
                     SelectAll: "True",
                     Filters: [
@@ -166,11 +176,10 @@
                 Page.setFieldValue('fProductWeight', data2[0].fProductWeight);
             }
             else if (Page.usetype == "add") {
-                var sqlObj = {
-                    TableName: "BscDataListD",
+                var sqlObj = { TableName: "BscDataListD",
                     Fields: "*",
                     SelectAll: "True",
-                    Filters: [{ Field: "sClassID", ComOprt: "=", Value: "'sColorItem'" }]
+                    Filters: [{ Field: "sClassID", ComOprt: "=", Value: "'sColorItem'"}]
                 };
                 var data = SqlGetData(sqlObj);
                 if (data.length > 0) {
@@ -215,7 +224,7 @@
                         ParmName: "@formid",
                         Value: 5561
                     }
-                        ]
+                    ]
                     }
                     var result = SqlStoreProce(jsonobj);
                     Page.setFieldValue("sOrderNo", result);
@@ -242,20 +251,20 @@
                         else if (iUnitID == "0") {
                             fWeight = Number(fSumQty);
                         }
-                        $("#SDOrderD").datagrid("updateRow", { index: index, row: { fWeight: fWeight } });
+                        $("#SDOrderD").datagrid("updateRow", { index: index, row: { fWeight: fWeight} });
                         calcTotal();
                     }
                     var fPrice = row.fPrice;
                     if (fPrice != "") {
                         //row.fTotal = Number(fSumQty) * Number(fPrice);
-                        $("#SDOrderD").datagrid("updateRow", { index: index, row: { fTotal: Number(fSumQty) * Number(fPrice) } });
+                        $("#SDOrderD").datagrid("updateRow", { index: index, row: { fTotal: Number(fSumQty) * Number(fPrice)} });
                         calcTotal();
                     }
                 }
                 if (datagridOp.currentColumnName == "fPrice" && changes.fPrice) {
                     var fSumQty = row.fSumQty;
                     var fPrice = row.fPrice;
-                    $("#SDOrderD").datagrid("updateRow", { index: index, row: { fTotal: Number(fSumQty) * Number(fPrice) } });
+                    $("#SDOrderD").datagrid("updateRow", { index: index, row: { fTotal: Number(fSumQty) * Number(fPrice)} });
                 }
             }
             if (tableid == "SDOrderDOtherCost") {
@@ -323,11 +332,10 @@
         }
 
         function SeliBscDataMatRecNo() {
-            var sqlObj = {
-                TableName: "BscDataMatDFabAsk",
+            var sqlObj = { TableName: "BscDataMatDFabAsk",
                 Fields: "*",
                 SelectAll: "True",
-                Filters: [{ Field: "iMainRecNo", ComOprt: "=", Value: "'" + Page.getFieldValue("iBscDataMatFabRecNo") + "'" }]
+                Filters: [{ Field: "iMainRecNo", ComOprt: "=", Value: "'" + Page.getFieldValue("iBscDataMatFabRecNo") + "'"}]
             };
             var data = SqlGetData(sqlObj);
             if (data.length > 0) {
@@ -453,7 +461,7 @@
                             Value: Page.userid
                         }
 
-                    ]
+                        ]
                 }
                 var result = SqlStoreProce(jsonobj);
             }
@@ -569,246 +577,258 @@
                 Page.setFieldValue("fLeftTotal", fLeftTotal);
             }
         }
-
+        function doClickRadio(obj) {
+            if (obj.checked == true) {
+                Page.setFieldValue("sProductMass", obj.value);
+                if (obj.value == "公司") {
+                    $("#tdID").html("公司名称");
+                } else {
+                    $("#tdID").html("身份证号");
+                }
+            }
+        }
     </script>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="_" runat="Server">
-    <div class="easyui-tabs" data-options="border:false">
+    <div class="easyui-tabs" data-options="fit:true">
         <div title="订单信息">
-            <div>
-                <div style="display: none;">
-                    <cc1:ExtHidden2 ID="ExtHidden1" Z_FieldID="iBillType" runat="server" />
-                    <cc1:ExtTextBox2 ID="ExtTextBox15" runat="server" Z_FieldID="sDeptID" />
-                    <cc1:ExtTextBox2 ID="ExtTextBox3" runat="server" Z_FieldID="fQty" Style="display: none;" />
-                    <%--<cc1:ExtTextBox2 ID="ExtTextBox7" runat="server" Z_FieldID="fTotal" Style="display: none;" />--%>
-                    <cc1:ExtTextBox2 ID="ExtTextBox8" runat="server" Z_FieldID="sSaleID" Style="display: none;" />
-                    <cc1:ExtTextBox2 ID="ExtTextBox14" runat="server" Z_FieldID="iBscDataMatFabRecNo"
-                        Style="display: none;" />
-                    <cc1:ExtTextBox2 ID="ExtTextBox7" Z_FieldID="sInputUserName" runat="server" />
-                </div>
-                <!--主表部分-->
-                <table class="tabmain">
-                    <tr>
-                        <!--这里是主表字段摆放位置-->
-                        <td>订单号
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox1" runat="server" Z_FieldID="sOrderNo" />
-                        </td>
-                        <td>客户订单号
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox5" runat="server" Z_FieldID="sContractNo" />
-                        </td>
-                        <td>客户
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox19" runat="server" Z_FieldID="iBscDataCustomerRecNo"
-                                Z_Required="True" />
-                        </td>
-                        <td>签订日期
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox4" runat="server" Z_FieldType="日期" Z_FieldID="dDate"
-                                Z_Required="True" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>产品编号
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox_iBscDataMatRecNo" runat="server" Z_FieldID="iBscDataMatRecNo"
-                                Z_Required="True" />
-                        </td>
-                        <td>产品名称
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox11" runat="server" Z_FieldID="sName" Z_NoSave="True"
-                                Z_readOnly="True" />
-                        </td>
-                        <td>幅宽（cm）
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox20" runat="server" Z_FieldID="fProductWidth" Z_FieldType="整数" />
-                        </td>
-                        <td>克重（g/㎡）
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox21" runat="server" Z_FieldID="fProductWeight" Z_FieldType="整数" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>客户品名
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox10" runat="server" Z_FieldID="sCustomerProductNo" />
-                        </td>
-                        <td>坯布编号
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox24" runat="server" Z_FieldID="sBscDataFabCode" Z_NoSave="True"
-                                Z_readOnly="True" />
-                        </td>
-                        <td>单位
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox_iUnitID" runat="server" Z_FieldID="iUnitID" Z_Required="True" />
-                        </td>
-                        <td>订单类型
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox9" runat="server" Z_FieldID="iOrderType" Z_Required="True" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>寄样类型
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox13" runat="server" Z_FieldID="sSampleType" Z_Required="True" />
-                        </td>
-                        <td>订单交期
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox6" runat="server" Z_FieldID="dOrderDate" Z_FieldType="日期"
-                                Z_Required="True" />
-                        </td>
-                        <td>生产交期
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox2" runat="server" Z_FieldID="dProduceDate" Z_FieldType="日期"
-                                Z_Required="True" />
-                        </td>
-                        <td>匹重
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox16" runat="server" Z_FieldID="sRollWeight" Z_decimalDigits="0"
-                                Z_FieldType="整数" />
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>总金额
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox12" runat="server" Z_FieldID="fTotal" Z_readOnly="True"
-                                Z_Required="False" Width="120px" Z_FieldType="数值" Z_disabled="False" Z_decimalDigits="2" />
-                        </td>
-                        <td>制单人
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox29" runat="server" Z_FieldID="sUserID" Z_readOnly="True"
-                                Z_Required="False" Width="120px" />
-                        </td>
-                        <td>制单时间
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox211" runat="server" Z_FieldID="dInputDate" Z_FieldType="时间"
-                                Z_readOnly="True" Width="120px" />
-                        </td>
-                        <td>坯布单价
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox26" Z_FieldID="fFabPrice" runat="server" Z_decimalDigits="2"
-                                Z_FieldType="数值" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>币别
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox31" runat="server" Z_FieldID="sBB" />
-                        </td>
-                        <td>汇率
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox32" runat="server" Z_FieldID="fRate" />
-                        </td>
-                        <td>付款方式
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox33" runat="server" Z_FieldID="sPayMethodID" />
-                        </td>
-                        <td>价格条款
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox34" runat="server" Z_FieldID="sPriceTerm" Style="width: 80px;" />
-                            <cc1:ExtTextBox2 ID="ExtTextBox35" runat="server" Z_FieldID="sPriceItemGk" Style="width: 70px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>目的地
-                        </td>
-                        <td>
-                            <cc1:ExtTextArea2 ID="ExtTextArea6" runat="server" Z_FieldID="sDestination" Style="width: 99%;" />
-                        </td>
-                        <td>备注
-                        </td>
-                        <td colspan="3">
-                            <textarea id="sReMark" style="border-bottom: 1px solid black; width: 99%; border-left-style: none; border-left-color: inherit; border-left-width: 0px; border-right-style: none; border-right-color: inherit; border-right-width: 0px; border-top-style: none; border-top-color: inherit; border-top-width: 0px;"
-                                fieldid="sReMark"></textarea>
-                        </td>
-                        <td>是否备货
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtSelect21" runat="server" Z_FieldID="iprepare" />
-                        </td>
-                    </tr>
-                    <tr id="trPay">
-                        <td>
-                            <span style="color: Red; font-weight: bold;">已收款金额</span>
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox27" runat="server" Z_FieldID="fReceiveTotal" Z_NoSave="true"
-                                Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
-                        </td>
-                        <td>
-                            <span style="color: Red; font-weight: bold;">已发货金额</span>
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox28" runat="server" Z_FieldID="fSendTotal" Z_NoSave="true"
-                                Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
-                        </td>
-                        <td>
-                            <span style="color: Red; font-weight: bold;">订单余额</span>
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox30" runat="server" Z_FieldID="fLeftTotal" Z_NoSave="true"
-                                Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
-                        </td>
-                        <td>花型
-                        </td>
-                        <td>
-                            <cc1:ExtTextBox2 ID="ExtTextBox36" runat="server" Z_FieldID="iBscDataFlowerTypeRecNo" />
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <!--下面是子表。注意，子表必须要指定tablename，tablename为数据集成中定义的子表表名-->
-            <div class="easyui-tabs" data-options="border:false,onSelect:calc">
-                <div data-options="" title="订单明细">
-                    <!--  子表1  -->
-                    <table id="SDOrderD" tablename="SDOrderD">
+            <div id="divContent" class="easyui-layout" data-options="fit:true">
+                <div data-options="region:'north'" style="overflow: hidden;">
+                    <div style="display: none;">
+                        <cc1:ExtHidden2 ID="ExtHidden1" Z_FieldID="iBillType" runat="server" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox15" runat="server" Z_FieldID="sDeptID" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox3" runat="server" Z_FieldID="fQty" Style="display: none;" />
+                        <%--<cc1:ExtTextBox2 ID="ExtTextBox7" runat="server" Z_FieldID="fTotal" Style="display: none;" />--%>
+                        <cc1:ExtTextBox2 ID="ExtTextBox8" runat="server" Z_FieldID="sSaleID" Style="display: none;" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox14" runat="server" Z_FieldID="iBscDataMatFabRecNo"
+                            Style="display: none;" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox7" Z_FieldID="sInputUserName" runat="server" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox34" Z_FieldID="sProductMass" runat="server" />
+                    </div>
+                    <!--主表部分-->
+                    <table class="tabmain">
+                        <tr>
+                            <!--这里是主表字段摆放位置-->
+                            <td>
+                                订单号
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox1" runat="server" Z_FieldID="sOrderNo" />
+                            </td>
+                            <td>
+                                客户订单号
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox5" runat="server" Z_FieldID="sContractNo" />
+                            </td>
+                            <td>
+                                客户
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox19" runat="server" Z_FieldID="iBscDataCustomerRecNo"
+                                    Z_Required="True" />
+                            </td>
+                            <td>
+                                签订日期
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox4" runat="server" Z_FieldType="日期" Z_FieldID="dDate"
+                                    Z_Required="True" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                产品编号
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox_iBscDataMatRecNo" runat="server" Z_FieldID="iBscDataMatRecNo"
+                                    Z_Required="True" />
+                            </td>
+                            <td>
+                                产品名称
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox11" runat="server" Z_FieldID="sName" Z_NoSave="True"
+                                    Z_readOnly="True" />
+                            </td>
+                            <td>
+                                幅宽（cm）
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox20" runat="server" Z_FieldID="fProductWidth" Z_FieldType="整数" />
+                            </td>
+                            <td>
+                                克重（g/㎡）
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox21" runat="server" Z_FieldID="fProductWeight" Z_FieldType="整数" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                客户品名
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox10" runat="server" Z_FieldID="sCustomerProductNo" />
+                            </td>
+                            <td>
+                                坯布编号
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox24" runat="server" Z_FieldID="sBscDataFabCode" Z_NoSave="True"
+                                    Z_readOnly="True" />
+                            </td>
+                            <td>
+                                单位
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox_iUnitID" runat="server" Z_FieldID="iUnitID" Z_Required="True" />
+                            </td>
+                            <td>
+                                订单类型
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox9" runat="server" Z_FieldID="iOrderType" Z_Required="True" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                寄样类型
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox13" runat="server" Z_FieldID="sSampleType" Z_Required="True" />
+                            </td>
+                            <td>
+                                订单交期
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox6" runat="server" Z_FieldID="dOrderDate" Z_FieldType="日期"
+                                    Z_Required="True" />
+                            </td>
+                            <td>
+                                生产交期
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox2" runat="server" Z_FieldID="dProduceDate" Z_FieldType="日期"
+                                    Z_Required="True" />
+                            </td>
+                            <td>
+                                指定匹重
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox16" runat="server" Z_FieldID="sRollWeight" Z_decimalDigits="0"
+                                    Z_FieldType="整数" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                总金额
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox12" runat="server" Z_FieldID="fTotal" Z_readOnly="True"
+                                    Z_Required="False" Width="120px" Z_FieldType="数值" Z_disabled="False" Z_decimalDigits="2" />
+                            </td>
+                            <td>
+                                制单人
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox29" runat="server" Z_FieldID="sUserID" Z_readOnly="True"
+                                    Z_Required="False" Width="120px" />
+                            </td>
+                            <td>
+                                制单时间
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox211" runat="server" Z_FieldID="dInputDate" Z_FieldType="时间"
+                                    Z_readOnly="True" Width="120px" />
+                            </td>
+                            <td>
+                                坯布单价
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox26" Z_FieldID="fFabPrice" runat="server" Z_decimalDigits="2"
+                                    Z_FieldType="数值" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                是否备货
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtSelect21" runat="server" Z_FieldID="iprepare" />
+                            </td>
+                            <td>
+                                销售类型
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox31" runat="server" Z_FieldID="iSaleType" />
+                            </td>
+                            <td>
+                                备注
+                            </td>
+                            <td colspan="3">
+                                <textarea id="sReMark" style="border-bottom: 1px solid black; width: 550px; border-left-style: none;
+                                    border-left-color: inherit; border-left-width: 0px; border-right-style: none;
+                                    border-right-color: inherit; border-right-width: 0px; border-top-style: none;
+                                    border-top-color: inherit; border-top-width: 0px;" fieldid="sReMark"></textarea>
+                            </td>
+                        </tr>
+                        <tr id="trPay">
+                            <td>
+                                <span style="color: Red; font-weight: bold;">已收款金额</span>
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox27" runat="server" Z_FieldID="fReceiveTotal" Z_NoSave="true"
+                                    Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
+                            </td>
+                            <td>
+                                <span style="color: Red; font-weight: bold;">已发货金额</span>
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox28" runat="server" Z_FieldID="fSendTotal" Z_NoSave="true"
+                                    Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
+                            </td>
+                            <td>
+                                <span style="color: Red; font-weight: bold;">订单余额</span>
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox30" runat="server" Z_FieldID="fLeftTotal" Z_NoSave="true"
+                                    Z_FieldType="数值" Z_decimalDigits="2" Z_readOnly="true" />
+                            </td>
+                            
+                        </tr>
                     </table>
                 </div>
-                <div data-options="" title="其他费用">
-                    <!--  子表2  -->
-                    <table id="SDOrderDOtherCost" tablename="SDOrderDOtherCost">
-                    </table>
-                </div>
-                <div data-options="" title="坯布要求">
-                    <!--  子表2  -->
-                    <table id="SDOrderDFab" tablename="SDOrderDFab">
-                    </table>
-                </div>
-                <div data-options="" title="利润核算">
+                <div data-options="region:'center'">
+                    <!--下面是子表。注意，子表必须要指定tablename，tablename为数据集成中定义的子表表名-->
+                    <div class="easyui-tabs" data-options="fit:true,border:false,onSelect:calc">
+                        <div data-options="fit:true" title="订单明细">
+                            <!--  子表1  -->
+                            <table id="SDOrderD" tablename="SDOrderD">
+                            </table>
+                        </div>
+                        <div data-options="fit:true" title="其他费用">
+                            <!--  子表2  -->
+                            <table id="SDOrderDOtherCost" tablename="SDOrderDOtherCost">
+                            </table>
+                        </div>
+                        <div data-options="fit:true" title="坯布要求">
+                            <!--  子表2  -->
+                            <table id="SDOrderDFab" tablename="SDOrderDFab">
+                            </table>
+                        </div>
+                        <div data-options="fit:true" title="利润核算">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div title="付款要求">
             <table>
                 <tr>
-                    <td colspan="2">结算方式：定金<cc1:ExtTextBox2 ID="ExtTextBox212" runat="server" Style="width: 35px" Z_FieldID="iSubscription"
-                        Z_FieldType="整数" />
+                    <td colspan="2">
+                        结算方式：定金<cc1:ExtTextBox2 ID="ExtTextBox212" runat="server" Style="width: 35px" Z_FieldID="iSubscription"
+                            Z_FieldType="整数" />
                         %&nbsp;&nbsp;
                         <cc1:ExtTextBox2 ID="ExtTextBox23" runat="server" Z_FieldID="sMiddleCostName" Style="width: 99px" />
                         <cc1:ExtTextBox2 ID="ExtTextBox17" runat="server" Z_FieldID="iMiddleCost" Style="width: 36px"
@@ -820,7 +840,8 @@
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="2">乙方应于甲方交付产品后<cc1:ExtTextBox2 ID="ExtTextBox18" runat="server" Z_FieldID="iDay" stlye="width:60px" />
+                    <td colspan="2">
+                        乙方应于甲方交付产品后<cc1:ExtTextBox2 ID="ExtTextBox18" runat="server" Z_FieldID="iDay" stlye="width:60px" />
                         天内付清该批货款，且双方交易过程中的累积欠款金额不得超过<cc1:ExtTextBox2 ID="ExtTextBox22" runat="server" Z_FieldID="fMoney"
                             Style="width: 80px" />
                         元<br />
@@ -828,40 +849,71 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>产品质量要求
-                    </td>
-                    <td>
-                        <cc1:ExtTextArea2 ID="ExtTextArea1" runat="server" Z_FieldID="sProductAsk" Style="width: 400px; height: 50px;" />
-                    </td>
-                </tr>
-                <tr>
-                    <td>交货地点，方式
-                    </td>
-                    <td>
-                        <cc1:ExtTextArea2 ID="ExtTextArea2" runat="server" Z_FieldID="sReceiveAddr" Style="width: 400px; height: 50px;" />
+                    <td colspan="2">
+                        订单可用传真或邮件方式，乙方在本合同项下的欠款，由
+                        <cc1:ExtTextBox2 ID="ExtTextBox33" runat="server" Z_FieldID="sPerson" Style="width: 100px" />
+                        
+                        <input type="radio" name="sProductMass1" value="个人" id="inputRadioP" checked="checked" onclick="doClickRadio(this)" />
+                        <label for="inputRadioP">个人</label>
+                        <input type="radio" name="sProductMass1" value="公司" id="inputRadioC" onclick="doClickRadio(this)" />
+                        <label for="inputRadioC">公司</label>
+                        保证担保，保证期二年。
                     </td>
                 </tr>
                 <tr>
-                    <td>运输方式及到港和费用负担
+                    <td id="tdID">
+                        身份证号
                     </td>
                     <td>
-                        <cc1:ExtTextArea2 ID="ExtTextArea3" runat="server" Z_FieldID="sTransType" Style="width: 400px; height: 50px;" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox32" runat="server" Z_FieldID="sId" Style="width: 170px" />
                     </td>
                 </tr>
                 <tr>
-                    <td>包装标准
+                    <td>
+                        产品质量要求
                     </td>
                     <td>
-                        <cc1:ExtTextArea2 ID="ExtTextArea4" runat="server" Z_FieldID="sPackType" Style="width: 400px; height: 50px;" />
+                        <cc1:ExtTextArea2 ID="ExtTextArea1" runat="server" Z_FieldID="sProductAsk" Style="width: 400px;
+                            height: 50px;" />
                     </td>
                 </tr>
                 <tr>
-                    <td>验收标准及提出异议期限
+                    <td>
+                        特约事项
                     </td>
                     <td>
-                        <cc1:ExtTextArea2 ID="ExtTextArea5" runat="server" Z_FieldID="sCheckStand" Style="width: 400px; height: 50px;" />
+                        <cc1:ExtTextArea2 ID="ExtTextArea2" runat="server" Z_FieldID="sReceiveAddr" Style="width: 400px;
+                            height: 50px;" />
                     </td>
                 </tr>
+                <tr>
+                    <td>
+                        运输方式及到港和费用负担
+                    </td>
+                    <td>
+                        <cc1:ExtTextArea2 ID="ExtTextArea3" runat="server" Z_FieldID="sTransType" Style="width: 400px;
+                            height: 50px;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        包装标准
+                    </td>
+                    <td>
+                        <cc1:ExtTextArea2 ID="ExtTextArea4" runat="server" Z_FieldID="sPackType" Style="width: 400px;
+                            height: 50px;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        验收标准及提出异议期限
+                    </td>
+                    <td>
+                        <cc1:ExtTextArea2 ID="ExtTextArea5" runat="server" Z_FieldID="sCheckStand" Style="width: 400px;
+                            height: 50px;" />
+                    </td>
+                </tr>
+                
             </table>
         </div>
     </div>

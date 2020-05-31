@@ -43,6 +43,7 @@
                 Page.setFieldValue('sBscDataFabName', data2[0].sBscDataFabName);
                 Page.setFieldValue('fBscDataFabWeight', data2[0].fBscDataFabWeight);
                 Page.setFieldValue('fBscDataFabWidth', data2[0].fBscDataFabWidth);
+                
             }
             else if (Page.usetype == "add") {
                 var sqlObj = { TableName: "BscDataColor",
@@ -134,6 +135,17 @@
                             Page.setFieldEnabled("iOrderType");
                         }
                     }
+                }
+            }
+            if (Page.usetype == "modify" || Page.usetype == "view") {
+                Page.setFieldValue("sProductMass", Page.pageData.sProductMass);
+                if (Page.pageData.sProductMass == "个人") {
+                    $("#inputRadioP")[0].checked = true;
+                    $("#tdID").html("身份证号");
+                }
+                if (Page.pageData.sProductMass == "公司") {
+                    $("#inputRadioC")[0].checked = true;
+                    $("#tdID").html("公司名称");
                 }
             }
         })
@@ -305,6 +317,28 @@
                 }
             }
         }
+        function doClickRadio(obj) {
+            if (obj.checked == true) {
+                Page.setFieldValue("sProductMass", obj.value);
+                if (obj.value == "公司") {
+                    $("#tdID").html("公司名称");
+                } else {
+                    $("#tdID").html("身份证号");
+                }
+            }
+        }
+        Page.Formula = function (field) {
+            if (Page.isInited == true) {
+                if (field == "iOrderType") {
+                    var iOrderType = Page.getFieldValue("iOrderType");
+                    if (iOrderType == "4") {
+                        Page.setFieldValue("sResponse", "供方只承担加工费单价的二倍赔偿。");
+                    } else {
+                        Page.setFieldValue("sResponse", "需方收到坯布后自行试验相对应坯布品质，供方只接受退坯布及坯布价值，不承担染费。");
+                    }
+                }
+            }
+        }
     </script>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="_" runat="Server">
@@ -315,6 +349,7 @@
                     <div style="display: none;">
                         <cc1:ExtHidden2 ID="ExtHidden1" Z_FieldID="iBillType" runat="server" />
                         <cc1:ExtTextBox2 ID="ExtTextBox30" Z_FieldID="sInputUserName" runat="server" />
+                         <cc1:ExtTextBox2 ID="ExtTextBox34" Z_FieldID="sProductMass" runat="server" />
                     </div>
                     <!--主表部分-->
                     <table class="tabmain">
@@ -395,12 +430,12 @@
                             <td>
                                 <cc1:ExtTextBox2 ID="ExtTextBox9" runat="server" Z_FieldID="iOrderType" Z_Required="True" />
                             </td>
-                            <td>
+                            <%--<td>
                                 寄样类型
                             </td>
                             <td>
                                 <cc1:ExtTextBox2 ID="ExtTextBox13" runat="server" Z_FieldID="sSampleType" Z_Required="True" />
-                            </td>
+                            </td>--%>
                         </tr>
                         <tr>
                             <td>
@@ -423,6 +458,12 @@
                             <td>
                                 <cc1:ExtTextBox2 ID="ExtTextBox14" runat="server" Z_FieldID="sCompany" />
                             </td>
+                            <td>
+                                指定坯重
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox26" runat="server" Z_FieldID="sRollWeight" Z_FieldType="数值" Z_decimalDigits="1" />
+                            </td>
                             <td style="display: none;">
                                 部门
                             </td>
@@ -434,6 +475,12 @@
                             <cc1:ExtTextBox2 ID="ExtTextBox8" runat="server" Z_FieldID="sSaleID" Style="display: none;" />
                         </tr>
                         <tr>
+                            <td>
+                                销售类型
+                            </td>
+                            <td>
+                                <cc1:ExtTextBox2 ID="ExtTextBox31" runat="server" Z_FieldID="iSaleType" />
+                            </td>
                             <td>
                                 制单人
                             </td>
@@ -489,8 +536,8 @@
         <div title="付款要求">
             <table>
                 <tr>
-                    <td>
-                        身份证号：
+                    <td id="tdID">
+                        身份证号
                     </td>
                     <td>
                         <cc1:ExtTextBox2 ID="ExtTextBox22" Z_FieldID="sId" runat="server" />
@@ -510,6 +557,7 @@
                     </td>
                     <td>
                         <cc1:ExtCheckbox2 ID="ExtCheckbox1" Z_FieldID="iMatZD" runat="server" />
+                        <cc1:ExtTextBox2 ID="ExtTextBox27" runat="server" style="width:200px" />
                     </td>
                 </tr>
                 <tr>
@@ -538,15 +586,28 @@
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="2">
-                        六.订单可用传真或邮件方式，乙方在本合同项下的欠款，由
-                        <cc1:ExtTextBox2 ID="ExtTextBox16" Z_FieldID="sPerson" runat="server" Width="81px" />
-                        个人保证担保，保证期二年。
+                    <td>
+                        六.责任承担：
+                    </td>
+                    <td>
+                        <cc1:ExtTextArea2 ID="ExtTextArea4" Z_FieldID="sResponse" runat="server" Width="403px"
+                            Height="70px" />
                     </td>
                 </tr>
                 <tr>
                     <td colspan="2">
-                        七.结算方式：定金<cc1:ExtTextBox2 ID="ExtTextBox212" runat="server" Width="35px" Z_FieldID="iSubscription"
+                        七.订单可用传真或邮件方式，乙方在本合同项下的欠款，由
+                        <cc1:ExtTextBox2 ID="ExtTextBox16" Z_FieldID="sPerson" runat="server" Width="81px" />
+                        <input type="radio" name="sProductMass1" value="个人" id="inputRadioP" checked="checked" onclick="doClickRadio(this)" />
+                        <label for="inputRadioP">个人</label>
+                        <input type="radio" name="sProductMass1" value="公司" id="inputRadioC" onclick="doClickRadio(this)" />
+                        <label for="inputRadioC">公司</label>                        
+                        保证担保，保证期二年。
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        八.结算方式：定金<cc1:ExtTextBox2 ID="ExtTextBox212" runat="server" Width="35px" Z_FieldID="iSubscription"
                             Z_FieldType="整数" />
                         %&nbsp;&nbsp;
                         <cc1:ExtTextBox2 ID="ExtTextBox23" runat="server" Z_FieldID="sMiddleCostName" Width="99px" />
@@ -568,7 +629,7 @@
                 </tr>
                 <tr>
                     <td>
-                        八.特别要求：
+                        九.特别要求：
                     </td>
                     <td>
                         <cc1:ExtTextArea2 ID="ExtTextArea7" Z_FieldID="sSpeAsk" runat="server" Width="400px" />
