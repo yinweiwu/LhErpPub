@@ -39,7 +39,7 @@
                     <div class="bottom">
                         <div class="remember">
                             <input id="ckbRemember" type="checkbox" name="IsRememberMe" />
-                            <span onclick="clickRemember()">记住我一周</span>
+                            <span onclick="clickRemember()">记住我</span>
                         </div>
                         <input id="btnLogin" type="button" value="登录" onclick="login()" />
                         <div class="clear"></div>
@@ -90,6 +90,31 @@
                 .click(function (e) {
                     //e.preventDefault();
                 });
+
+            $.ajax({
+                url: "/ashx/LoginHandler.ashx?otype=getuserid",
+                type: "get",
+                async: true,
+                success: function (result) {
+                    var resultObj = JSON.parse(result);
+                    document.getElementById("txbUserName").value = resultObj.userid;
+                    document.getElementById("txbPassword").value = resultObj.pwd;
+                }
+            })
+            //var url = "/ashx/LoginHandler.ashx?otype=getuserid";
+            //var parms = "";
+            //var async = false;
+            //var ispost = false;
+            //var result = callpostback(url, parms, async, ispost);
+            //if (result != "") {
+            //    var resultObj = JSON2.parse(result);
+            //    document.getElementById("TxtUserName").value = resultObj.userid;
+            //    document.getElementById("TxtPassword").value = resultObj.pwd;
+            //}
+            //else {
+            //    document.getElementById("TxtUserName").focus();
+            //}
+
         });
         function clickRemember() {
             $("#ckbRemember")[0].checked = !$("#ckbRemember")[0].checked;
